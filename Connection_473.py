@@ -133,8 +133,15 @@ def read(csv1, csv2, csv3):
 
     print(len(passed), "connections passed for all data frames.")
 
+    # Save Excel file with the valid connections
+    df_output = pd.DataFrame(passed, columns=["AIRLINE_ID", "UNIQUE_CARRIER_ENTITY", "ORIGIN", "DEST", "AIRCRAFT_TYPE"])
+    df_output.to_excel("Data/Connections.xlsx", index=False)
+    print("Excel File 'Connections.xlsx' was created successfully.")
+
+
 if __name__ == "__main__":
-    csv1 = "Daten/T_T100I_SEGMENT_ALL_CARRIER_2022.csv"
-    csv2 = "Daten/T_T100I_SEGMENT_ALL_CARRIER_2023.csv"
-    csv3 = "Daten/T_T100I_SEGMENT_ALL_CARRIER_2024.csv"
+    csv1 = "Data/T_T100I_SEGMENT_ALL_CARRIER_2022.csv"
+    csv2 = "Data/T_T100I_SEGMENT_ALL_CARRIER_2023.csv"
+    csv3 = "Data/T_T100I_SEGMENT_ALL_CARRIER_2024.csv"
     read(csv1, csv2, csv3)
+
