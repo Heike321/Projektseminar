@@ -136,7 +136,7 @@ def read(csv1, csv2, csv3):
     # Save Excel file with the valid connections
     df_output = pd.DataFrame(passed, columns=["AIRLINE_ID", "UNIQUE_CARRIER_ENTITY", "ORIGIN", "DEST", "AIRCRAFT_TYPE"])
     df_output.to_excel("Data/Connections.xlsx", index=False)
-    print("Excel File 'Connections.xlsx' was created successfully.")
+    #print("Excel File 'Connections.xlsx' was created successfully.")
 
 
 if __name__ == "__main__":

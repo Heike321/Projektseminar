@@ -35,5 +35,5 @@ def compute_top_airlines(df, top_n=10):
     return total_airline_passengers.sort_values(by='PASSENGERS', ascending=False).head(top_n)
 
 
-print(df.groupby(['ORIGIN', 'DEST', 'MONTH', 'YEAR']).size().sort_values(ascending=False).head(10))
+#print(df.groupby(['ORIGIN', 'DEST', 'MONTH', 'YEAR']).size().sort_values(ascending=False).head(10))
 

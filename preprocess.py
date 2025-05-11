@@ -82,7 +82,7 @@ def preprocess():
     print(f"Total filtered and grouped rows saved: {len(final_grouped)}")
 
     # 
-    airports_df = pd.read_csv("Data/airports.dat", header=None, names=[
+    airports_df = pd.read_csv("airports.dat", header=None, names=[
         "Airport_ID", "Name", "City", "Country", "IATA", "ICAO",
         "Latitude", "Longitude", "Altitude", "Timezone", "DST",
         "Tz_database_time_zone", "Type", "Source"
