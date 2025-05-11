@@ -1,39 +1,28 @@
 import pandas as pd
 
-df = pd.concat([pd.read_csv(f"processed_{y}.csv") for y in [2022, 2023, 2024]])
+df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
+airports_df = pd.read_csv("airports.dat")  # Beispielpfad
 
 
 def compute_top_routes(df, top_n=10):
-    # Zerlege Verbindungsschlüssel, falls nötig
+    # Split connection key to extract origin and destination codes
     parts = df['con_key'].str.split('-', expand=True)
     df['ORIGIN'] = parts[2]
     df['DEST'] = parts[3]
 
-    # 1. Zuerst auf Monatsbasis aggregieren (alle Airlines/Aircrafts werden zusammengefasst)
-    monthly_routes = df.groupby(['YEAR', 'MONTH', 'ORIGIN', 'DEST'])['PASSENGERS'].sum().reset_index()
+    # Use full airport names if available; otherwise fall back to IATA codes
+    if "ORIGIN_NAME" in df.columns and "DEST_NAME" in df.columns:
+        df['ROUTE'] = df['ORIGIN_NAME'] + " → " + df['DEST_NAME']
+    else:
+        df['ROUTE'] = df['ORIGIN'] + " → " + df['DEST']
 
-    # 2. Dann auf Jahresbasis summieren
-    total_routes = monthly_routes.groupby(['ORIGIN', 'DEST'])['PASSENGERS'].sum().reset_index()
+    # Step 1: Aggregate monthly passenger totals per route
+    monthly_data = df.groupby(['YEAR', 'MONTH', 'ROUTE'])['PASSENGERS'].sum().reset_index()
 
-    # 3. Route-Label erzeugen
-    total_routes['ROUTE'] = total_routes['ORIGIN'] + " → " + total_routes['DEST']
+    # Step 2: Sum across all months and years
+    total_passengers = monthly_data.groupby('ROUTE')['PASSENGERS'].sum().reset_index()
 
-    return total_routes.sort_values(by='PASSENGERS', ascending=False).head(top_n)
+    # Step 3: Return the top N routes sorted by total passenger volume
+    return total_passengers.sort_values(by='PASSENGERS', ascending=False).head(top_n)
 
-def compute_top_airlines(df, top_n=10):
-    # Split the connection key to extract the airline identifier (if needed)
-    parts = df['con_key'].str.split('-', expand=True)
-    df['AIRLINE_ID'] = parts[0]
-
-    # Step 1: Aggregate monthly data per airline (to avoid double-counting across different aircraft/routes)
-    monthly_airline_data = df.groupby(['YEAR', 'MONTH', 'AIRLINE_ID'])['PASSENGERS'].sum().reset_index()
-
-    # Step 2: Sum total passengers per airline across all months and years
-    total_airline_passengers = monthly_airline_data.groupby('AIRLINE_ID')['PASSENGERS'].sum().reset_index()
-
-    # Step 3: Sort and return top N airlines
-    return total_airline_passengers.sort_values(by='PASSENGERS', ascending=False).head(top_n)
-
-
-#print(df.groupby(['ORIGIN', 'DEST', 'MONTH', 'YEAR']).size().sort_values(ascending=False).head(10))
 

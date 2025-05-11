@@ -95,10 +95,16 @@ def preprocess():
     sample_df = all_grouped[0][all_grouped[0]["con_key"].isin(passed_keys)]
     
     # Group by connection key to create a label for each origin-destination pair
-    grouped_labels = sample_df.groupby("con_key").agg({
-        "ORIGIN": "first",
-        "DEST": "first"
-    }).reset_index()
+    #grouped_labels = sample_df.groupby("con_key").agg({
+    #    "ORIGIN": "first",
+    #    "DEST": "first"
+    #}).reset_index()
+
+    #grouped_labels = grouped_labels.drop_duplicates(subset=["ORIGIN", "DEST"])
+
+    grouped_labels = sample_df.groupby(["ORIGIN", "DEST"], as_index=False).agg({
+        "con_key": "first"  
+    })
 
     # Create entries for the dropdown menu
     dropdown_entries = []
