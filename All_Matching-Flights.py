@@ -1,4 +1,6 @@
 import pandas as pd
+import math
+
 
 # # Load list of 473 valid connections
 valid_connections = pd.read_excel("Data/Connections.xlsx")
@@ -19,6 +21,18 @@ filtered_df = df_all.merge(valid_connections[connection_keys], how="inner", on=c
 
 # Group by connection + year + month and sum numeric values
 grouped = filtered_df.groupby(connection_keys + ["YEAR", "MONTH"]).agg("sum").reset_index()
+
+# Compute average passengers per flight (rounded up)
+grouped["AVG_PAX_PER_FLIGHT"] = grouped.apply(
+    lambda row: math.ceil(row["PASSENGERS"] / row["DEPARTURES_PERFORMED"]) if row["DEPARTURES_PERFORMED"] > 0 else 0,
+    axis=1
+)
+
+# Compute load factor (passengers / seats)
+grouped["LOAD_FACTOR"] = grouped.apply(
+    lambda row: row["PASSENGERS"] / row["SEATS"] if row["SEATS"] > 0 else 0,
+    axis=1
+)
 
 # Overwrite the original Connections.xlsx with grouped data
 grouped.to_excel("Data/Grouped_Valid_Connections.xlsx", index=False)
