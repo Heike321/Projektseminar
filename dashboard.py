@@ -5,17 +5,14 @@ import json
 import plotly.graph_objects as go
 from analysis import compute_top_airlines, compute_top_routes
 
-# Load preprocessed CSV data for each year
-df_2022 = pd.read_csv("processed_2022.csv")
-df_2023 = pd.read_csv("processed_2023.csv")
-df_2024 = pd.read_csv("processed_2024.csv")
+# Load preprocessed combined CSV data
+data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
 
 # Load list of valid connections (filtered based on data availability and threshold)
 with open("valid_connections.json") as f:
     valid_connections = json.load(f)
 
-# Combine all years into one DataFrame and convert year/month to a proper datetime object
-data = pd.concat([df_2022, df_2023, df_2024])
+
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
 
 # Initialize the Dash web application
@@ -35,17 +32,7 @@ app.layout = html.Div(style={'backgroundColor': '#111111', 'color': 'white', 'pa
             style={'backgroundColor': 'white', 'color': 'black'}
         ),
 
-        # Radio buttons to choose the load factor calculation method
-        html.Label("Choose load factor variant:"),
-        dcc.RadioItems(
-            id='lf-variant',
-            options=[
-                {"label": "Average per individual flight (LF_MEAN_SINGLE)", "value": "LF_MEAN_SINGLE"},
-                {"label": "Weighted total load factor (LF_WEIGHTED)", "value": "LF_WEIGHTED"}
-            ],
-            value="LF_WEIGHTED",  # Default selection
-            labelStyle={'display': 'block'}
-        ),
+       
         # Dropdown to select year
         html.Label("Select year:"),
         dcc.Dropdown(
@@ -79,10 +66,9 @@ app.layout = html.Div(style={'backgroundColor': '#111111', 'color': 'white', 'pa
 @app.callback(
     Output('lf-graph', 'figure'),                 # Output goes to the figure of the graph
     Input('connection-selector', 'value'),        # Triggered when a connection is selected
-    Input('lf-variant', 'value'),
     Input('year-selector','value')                  # Triggered when a load factor variant is selected
 )
-def update_graph(con_key, lf_variant, selected_year):
+def update_graph(con_key, selected_year):
     if not con_key:
         # If no connection is selected, return an empty figure
         return go.Figure()
@@ -94,18 +80,18 @@ def update_graph(con_key, lf_variant, selected_year):
     if selected_year != "all":
         sub = sub[sub["YEAR"] == int(selected_year)]
 
-    # Create a line chart for the selected load factor type
+    # Create a line chart 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=sub["DATE"],
-        y=sub[lf_variant],
+        y=sub["LOAD_FACTOR"],
         mode='lines+markers',
-        name=lf_variant
+        name="Load Factor"
     ))
 
     # Customize the appearance of the chart (dark theme)
     fig.update_layout(
-        title=f"Load Factor for {con_key} ({lf_variant})",
+        title=f"Load Factor for {con_key}",
         xaxis_title="Date",
         yaxis_title="Load Factor",
         plot_bgcolor='#222222',
