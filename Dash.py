@@ -33,36 +33,58 @@ app.layout = html.Div([
     ], style={'width': '25%', 'display': 'inline-block', 'marginLeft': '2%'}),
     html.Div(style={'height': '40px'}),  # spacer for vertical spacing
 
-    dcc.Graph(id='passenger-bar-chart')
+    dcc.Graph(id='passenger-bar-chart'),
+    dcc.Graph(id='loadfactor-bar-chart')
+    
+    
 
 ],
 style={'backgroundColor': 'black', 'padding': '20px'})
 
 # Callback to update the bar chart based on selected year and month
 @app.callback(
-    Output('passenger-bar-chart', 'figure'),
+    [Output('passenger-bar-chart', 'figure'),
+     Output('loadfactor-bar-chart', 'figure')],
     [Input('year-dropdown', 'value'),
      Input('month-dropdown', 'value')]
 )
-def update_graph(selected_year, selected_month):
-    # Filter the data based on user input
-    filtered_df = df[(df['YEAR'] == selected_year) & (df['MONTH'] == selected_month)]
+def update_graphs(selected_year, selected_month):
+    # Filter
+    filtered_df = df[(df['YEAR'] == selected_year) & (df['MONTH'] == selected_month)].copy()
+    filtered_df = filtered_df[filtered_df['SEATS'] > 0]  # Schutz vor Division durch 0
+    filtered_df['LOAD_FACTOR'] = filtered_df['PASSENGERS'] / filtered_df['SEATS']
 
-    # Group by route and sum passengers
-    grouped = filtered_df.groupby(['ORIGIN', 'DEST'], as_index=False)['PASSENGERS'].sum()
+    # Gruppierung
+    grouped = filtered_df.groupby(['ORIGIN', 'DEST'], as_index=False).agg({
+        'PASSENGERS': 'sum',
+        'SEATS': 'sum'
+    })
     grouped['ROUTE'] = grouped['ORIGIN'] + " → " + grouped['DEST']
+    grouped['LOAD_FACTOR'] = grouped['PASSENGERS'] / grouped['SEATS']
 
-    # Create bar chart
-    fig = px.bar(
+    # Diagramm 1: Passagierzahlen
+    fig_passengers = px.bar(
         grouped.sort_values('PASSENGERS', ascending=False).head(20),
         x='ROUTE',
         y='PASSENGERS',
-        title=f"Top 20 Routes by Number of Passengers ({selected_year}-{selected_month})",
-        labels={'PASSENGERS': 'Number of Passengers', 'ROUTE': 'Route'}
+        title=f"Top 20 Routes by Number of Passengers ({selected_year}-{selected_month})"
     )
-    fig.update_layout(xaxis_tickangle=-45)
-    return fig
+    fig_passengers.update_layout(xaxis_tickangle=-45)
+
+    # Diagramm 2: Auslastung
+    fig_loadfactor = px.bar(
+        grouped.sort_values('LOAD_FACTOR', ascending=False).head(20),
+        x='ROUTE',
+        y='LOAD_FACTOR',
+        title=f"Top 20 Routes by Load Factor ({selected_year}-{selected_month})",
+        labels={'LOAD_FACTOR': 'Load Factor'}
+    )
+    fig_loadfactor.update_layout(xaxis_tickangle=-45, yaxis_tickformat=".0%")
+
+    return fig_passengers, fig_loadfactor
+
 
 # Run the app
 if __name__ == '__main__':
     app.run(debug=True)
+
