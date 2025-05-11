@@ -1,9 +1,9 @@
 import dash
-from dash import dcc, html, Input, Output
+from dash import dcc, html, Input, Output, dash_table
 import pandas as pd
 import json
 import plotly.graph_objects as go
-from analysis import compute_top_airlines, compute_top_routes
+from analysis import compute_top_routes
 
 # Load preprocessed combined CSV data
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
@@ -52,14 +52,38 @@ app.layout = html.Div(style={'backgroundColor': '#111111', 'color': 'white', 'pa
     ], style={'marginBottom': '20px'}),
 
     # Graph component where the time series plot will be rendered
-    dcc.Graph(id='lf-graph'),
+    html.Div(style={'display': 'flex', 'gap': '40px'}, children=[
+    # Left
+    html.Div(style={'flex': 2}, children=[
+        dcc.Graph(id='lf-graph')
+    ]),
 
-    html.Div([
-        html.H2("Top 10 Routes"),
-        dcc.Graph(id='top-routes-graph'),
-        html.H2("Top 10 Airlines"),
-        dcc.Graph(id='top-airlines-graph'),
+    # right
+    html.Div(style={'flex': 1}, children=[
+        html.H2("Top 10 Routes", style={'textAlign': 'center'}),
+
+        html.Label("Select year:"),
+        dcc.Dropdown(
+            id='top-routes-year-selector',
+            options=[
+                {"label": "All years", "value": "all"},
+                {"label": "2022", "value": 2022},
+                {"label": "2023", "value": 2023},
+                {"label": "2024", "value": 2024}
+            ],
+            value="all",
+            clearable=False,
+            style={'backgroundColor': 'white', 'color': 'black'}
+        ),
+
+        html.Br(),
+
+        # Tabelle
+        html.Div(id='top-routes-table')
     ])
+])
+
+    
 ])
 
 # Define callback to update the graph based on user input
@@ -100,51 +124,36 @@ def update_graph(con_key, selected_year):
     )
     return fig
 
+
 @app.callback(
-    Output('top-routes-graph', 'figure'),
-    Output('top-airlines-graph', 'figure'),
-    Input('year-selector', 'value')
+    Output('top-routes-table', 'children'),
+    Input('top-routes-year-selector', 'value')
 )
-def update_top_charts(selected_year):
+def update_top_routes_table(selected_year):
     if selected_year == "all":
-        df = data
+        df_filtered = data
     else:
-        df = data[data["YEAR"] == int(selected_year)]
+        df_filtered = data[data["YEAR"] == int(selected_year)]
 
-    top_routes_df = compute_top_routes(df)
-    top_airlines_df = compute_top_airlines(df)
+    top_routes = compute_top_routes(df_filtered)
 
-    fig_routes = go.Figure()
-    fig_routes.add_trace(go.Bar(
-        x=top_routes_df["ROUTE"],
-        y=top_routes_df["PASSENGERS"],
-        marker_color='lightblue'
-    ))
-    fig_routes.update_layout(
-        title="Top 10 Routes by Passenger Volume",
-        xaxis_title="Route",
-        yaxis_title="Passengers",
-        plot_bgcolor='#222222',
-        paper_bgcolor='#111111',
-        font_color='white'
+    return dash_table.DataTable(
+        columns=[
+            {"name": "Route", "id": "ROUTE"},
+            {"name": "Passengers", "id": "PASSENGERS", "type": "numeric", "format": {"specifier": ","}}
+        ],
+        data=top_routes.to_dict("records"),
+        style_table={'overflowX': 'auto'},
+        style_cell={
+            'backgroundColor': '#111111',
+            'color': 'white',
+            'padding': '8px',
+        },
+        style_header={
+            'backgroundColor': '#222222',
+            'fontWeight': 'bold'
+        }
     )
-
-    fig_airlines = go.Figure()
-    fig_airlines.add_trace(go.Bar(
-        x=top_airlines_df["AIRLINE_ID"].astype(str),
-        y=top_airlines_df["PASSENGERS"],
-        marker_color='orange'
-    ))
-    fig_airlines.update_layout(
-        title="Top 10 Airlines by Passenger Volume",
-        xaxis_title="Airline ID",
-        yaxis_title="Passengers",
-        plot_bgcolor='#222222',
-        paper_bgcolor='#111111',
-        font_color='white'
-    )
-
-    return fig_routes, fig_airlines
    
 
 # Start the Dash web server when the script is run directly
