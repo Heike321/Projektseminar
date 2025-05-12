@@ -1,7 +1,7 @@
 import pandas as pd
 
 df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
-airports_df = pd.read_csv("airports.dat")  # Beispielpfad
+airports_df = pd.read_csv("airports.dat")  
 
 
 def compute_top_routes(df, top_n=10):
