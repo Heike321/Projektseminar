@@ -6,6 +6,19 @@ import math
 def make_key(air, uce, org, dst, atp):
     return f"{air}-{uce}-{org}-{dst}-{atp}"
 
+
+columns_to_keep = [
+    "DEPARTURES_SCHEDULED", "DEPARTURES_PERFORMED", "PAYLOAD", "SEATS", "PASSENGERS",
+    "FREIGHT", "MAIL", "DISTANCE", "RAMP_TO_RAMP", "AIR_TIME", "UNIQUE_CARRIER",
+    "AIRLINE_ID", "UNIQUE_CARRIER_NAME", "UNIQUE_CARRIER_ENTITY", "REGION", "CARRIER",
+    "CARRIER_NAME", "CARRIER_GROUP", "CARRIER_GROUP_NEW", "ORIGIN_AIRPORT_ID",
+    "ORIGIN_AIRPORT_SEQ_ID", "ORIGIN_CITY_MARKET_ID", "ORIGIN", "ORIGIN_CITY_NAME",
+    "ORIGIN_COUNTRY", "ORIGIN_COUNTRY_NAME", "ORIGIN_WAC", "DEST_AIRPORT_ID",
+    "DEST_AIRPORT_SEQ_ID", "DEST_CITY_MARKET_ID", "DEST", "DEST_CITY_NAME",
+    "DEST_COUNTRY", "DEST_COUNTRY_NAME", "DEST_WAC", "AIRCRAFT_GROUP", "AIRCRAFT_TYPE",
+    "AIRCRAFT_CONFIG", "YEAR", "QUARTER", "MONTH", "DISTANCE_GROUP", "CLASS"
+]
+
 def preprocess():
     # List of raw flight connection data files
     files = [
@@ -26,11 +39,11 @@ def preprocess():
     
     # Iterate over each year file and process the data
     for f, year in zip(files, [2022, 2023, 2024]):
-        df = pd.read_csv(f, usecols=[
-            "PASSENGERS", "DEPARTURES_PERFORMED", "SEATS",
-            "AIRLINE_ID", "UNIQUE_CARRIER_ENTITY", "ORIGIN",
-            "DEST", "AIRCRAFT_TYPE", "MONTH"
-        ])
+        df = pd.read_csv(f)#(f, usecols=[
+            #"PASSENGERS", "DEPARTURES_PERFORMED", "SEATS",
+            #"AIRLINE_ID", "UNIQUE_CARRIER_ENTITY", "ORIGIN",
+            #"DEST", "AIRCRAFT_TYPE", "MONTH"
+        #])
         
         # Create a unique connection key for each row
         df["con_key"] = df.apply(lambda row: make_key(
@@ -49,10 +62,8 @@ def preprocess():
             "PASSENGERS": "sum",
             "SEATS": "sum",
             "DEPARTURES_PERFORMED": "sum",
-            "AIRLINE_ID": "first",
-            "ORIGIN": "first",
-            "DEST": "first"
-        })
+            **{col: "first" for col in columns_to_keep}
+            })
         
         # Calculate Average Passengers per Flight (rounded up)
         grouped["AVG_PAX_PER_FLIGHT"] = grouped.apply(
@@ -94,33 +105,22 @@ def preprocess():
     # Sample a dataframe from the first year to get the connection labels
     sample_df = all_grouped[0][all_grouped[0]["con_key"].isin(passed_keys)]
     
-    # Group by connection key to create a label for each origin-destination pair
-    #grouped_labels = sample_df.groupby("con_key").agg({
-    #    "ORIGIN": "first",
-    #    "DEST": "first"
-    #}).reset_index()
-
-    #grouped_labels = grouped_labels.drop_duplicates(subset=["ORIGIN", "DEST"])
-
-    grouped_labels = sample_df.groupby(["ORIGIN", "DEST"], as_index=False).agg({
-        "con_key": "first"  
-    })
-
-    # Create entries for the dropdown menu
-    dropdown_entries = []
-    for _, row in grouped_labels.iterrows():
+    
+    # Create unique ORIGIN-DEST combinations
+    route_pairs = final_grouped.groupby(["ORIGIN", "DEST"], as_index=False).first()
+    # Build route dropdown
+    route_dropdown = []
+    for _, row in route_pairs.iterrows():
         origin = row["ORIGIN"]
         dest = row["DEST"]
         label = f"{iata_to_name.get(origin, origin)} ({origin}) → {iata_to_name.get(dest, dest)} ({dest})"
-        dropdown_entries.append({
-            "label": label,
-            "value": row["con_key"]
-        })
+        route_dropdown.append({"label": label, "value": f"{origin}-{dest}"})
 
-    # Save the dropdown entries as a JSON file for use in the dashboard
-    with open("Data/valid_connections.json", "w") as f:
-        json.dump(dropdown_entries, f)
+    # Save it
+    with open("Data/valid_routes.json", "w") as f:
+        json.dump(route_dropdown, f)
 
+ 
 if __name__ == "__main__":
     preprocess()
 

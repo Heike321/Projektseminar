@@ -3,138 +3,246 @@ from dash import dcc, html, Input, Output, dash_table
 import pandas as pd
 import json
 import plotly.graph_objects as go
-from analysis import compute_top_routes
+from analysis import compute_top_routes  
 
-# Load preprocessed combined CSV data
+# Load and preprocess data
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
-
-# Load list of valid connections (filtered based on data availability and threshold)
-with open("valid_connections.json") as f:
-    valid_connections = json.load(f)
-
-
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
 
-# Initialize the Dash web application
+with open("Data/valid_routes.json") as f:
+    route_options = json.load(f)
+
+# Initialize Dash app 
 app = dash.Dash(__name__)
+app.title = "Flight Dashboard"
 
-# Define the layout (UI structure) of the dashboard
-app.layout = html.Div(style={'backgroundColor': '#111111', 'color': 'white', 'padding': '20px'}, children=[
-    html.H1("Flight Connection Dashboard", style={'textAlign': 'center'}),
+# App layout 
+app.layout = html.Div(
+    style={'backgroundColor': '#111111', 'color': 'white', 'padding': '20px'},
+    children=[
+        html.H1("Flight Connection Dashboard", style={'textAlign': 'center'}),
 
-    html.Div([
-        # Dropdown to select a specific flight connection (based on con_key)
-        html.Label("Select a connection:"),
-        dcc.Dropdown(
-            id='connection-selector',
-            options=json.load(open("valid_connections.json")),
-            placeholder="Choose a connection",
-            style={'backgroundColor': 'white', 'color': 'black'}
-        ),
+        html.Div(style={'display': 'flex'}, children=[
+            # LEFT SIDE: Graph and controls
+            html.Div(style={'flex': 2, 'marginRight': '40px'}, children=[
 
-       
-        # Dropdown to select year
-        html.Label("Select year:"),
-        dcc.Dropdown(
-            id='year-selector',
-            options=[
-                {"label": "All years", "value": "all"},
-                {"label": "2022", "value": 2022},
-                {"label": "2023", "value": 2023},
-                {"label": "2024", "value": 2024}
-            ],
-            value="all",
-            clearable=False,
-            style={'backgroundColor': 'white', 'color': 'black'}
-        )
+                # Route dropdown (alone at top)
+                html.Div([
+                    html.Label("Select a route:"),
+                    dcc.Dropdown(
+                        id='route-selector',
+                        options=route_options,
+                        placeholder="Choose a route",
+                        style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                    )
+                ], style={'marginBottom': '20px'}),  # <- Achtung: "marginBottom", nicht "marginButtom"
 
+                # Airline and Year dropdowns side-by-side
+                html.Div([
+                    html.Div([
+                        html.Label("Select airline:"),
+                        dcc.Dropdown(
+                            id='airline-selector',
+                            options=[{"label": "All Airlines", "value": "all"}],
+                            value="all",
+                            style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                        )
+                    ], style={'flex': 1, 'marginRight': '10px'}),
 
-    ], style={'marginBottom': '20px'}),
+                    html.Div([
+                        html.Label("Select year:"),
+                        dcc.Dropdown(
+                            id='year-selector',
+                            options=[
+                                {"label": "All years", "value": "all"},
+                                {"label": "2022", "value": 2022},
+                                {"label": "2023", "value": 2023},
+                                {"label": "2024", "value": 2024}
+                            ],
+                            value="all",
+                            clearable=False,
+                            style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                        )
+                    ], style={'flex': 1})
+                ], style={'display': 'flex', 'marginBottom': '20px'}),
 
-    # Graph component where the time series plot will be rendered
-    html.Div(style={'display': 'flex', 'gap': '40px'}, children=[
-    # Left
-    html.Div(style={'flex': 2}, children=[
-        dcc.Graph(id='lf-graph')
-    ]),
+                # Graph
+                dcc.Graph(id='lf-graph')
+            ]),
 
-    # right
-    html.Div(style={'flex': 1}, children=[
-        html.H2("Top 10 Routes", style={'textAlign': 'center'}),
+            # RIGHT SIDE: Top Routes Table
+            html.Div(style={'flex': 1}, children=[
+                html.H2("Top 10 Routes", style={'textAlign': 'center'}),
 
-        html.Label("Select year:"),
-        dcc.Dropdown(
-            id='top-routes-year-selector',
-            options=[
-                {"label": "All years", "value": "all"},
-                {"label": "2022", "value": 2022},
-                {"label": "2023", "value": 2023},
-                {"label": "2024", "value": 2024}
-            ],
-            value="all",
-            clearable=False,
-            style={'backgroundColor': 'white', 'color': 'black'}
-        ),
+                html.Label("Select year:"),
+                dcc.Dropdown(
+                    id='top-routes-year-selector',
+                    options=[
+                        {"label": "All years", "value": "all"},
+                        {"label": "2022", "value": 2022},
+                        {"label": "2023", "value": 2023},
+                        {"label": "2024", "value": 2024}
+                    ],
+                    value="all",
+                    clearable=False,
+                    #style={'backgroundColor': 'white', 'color': 'black'}
+                ),
 
-        html.Br(),
+                html.Br(),
 
-        # Tabelle
-        html.Div(id='top-routes-table')
+                html.Div(id='top-routes-table')
+            ])
+        ])
     ])
-])
+'''
+        # Graph and top routes side-by-side
+        html.Div([
+            #html.Div([
+                # Dropdown section (route, airline, year)
+                #html.Div([
+            html.Div([
+                html.Label("Select a route:"),
+                dcc.Dropdown(
+                    id='route-selector',
+                    options=route_options,
+                    placeholder="Choose a route",
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                )
+            ], style={'marginButtom': '20px'}),
 
-    
-])
+            html.Div([
+                html.Div([
+                    html.Label("Select airline:"),
+                    dcc.Dropdown(
+                        id='airline-selector',
+                        options=[{"label": "All Airlines", "value": "all"}],
+                        value="all",
+                        style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                    )
+                ], style={'flex': 1, 'marginRight': '10px'}),
 
-# Define callback to update the graph based on user input
-@app.callback(
-    Output('lf-graph', 'figure'),                 # Output goes to the figure of the graph
-    Input('connection-selector', 'value'),        # Triggered when a connection is selected
-    Input('year-selector','value')                  # Triggered when a load factor variant is selected
+                html.Div([
+                    html.Label("Select year:"),
+                    dcc.Dropdown(
+                        id='year-selector',
+                        options=[
+                            {"label": "All years", "value": "all"},
+                            {"label": "2022", "value": 2022},
+                            {"label": "2023", "value": 2023},
+                            {"label": "2024", "value": 2024}
+                        ],
+                        value="all",
+                        clearable=False,
+                        style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                    )
+                ], style={'flex': 1})
+            ], style={'display': 'flex', 'marginBottom': '20px'}),
+
+            dcc.Graph(id='lf-graph')  # Load factor time series
+        ], style={'flex': 2, 'marginRight': '40px'}),
+
+            html.Div([
+                html.H2("Top 10 Routes", style={'textAlign': 'center'}),
+
+                html.Label("Select year:"),
+                dcc.Dropdown(
+                    id='top-routes-year-selector',
+                    options=[
+                        {"label": "All years", "value": "all"},
+                        {"label": "2022", "value": 2022},
+                        {"label": "2023", "value": 2023},
+                        {"label": "2024", "value": 2024}
+                    ],
+                    value="all",
+                    clearable=False,
+                    style={'backgroundColor': 'white', 'color': 'black'}
+                ),
+
+                html.Br(),
+                html.Div(id='top-routes-table')  # DataTable will be rendered here
+            ], style={'flex': 1})
+        ], style={'display': 'flex'})
+        
+    ]
 )
-def update_graph(con_key, selected_year):
-    if not con_key:
-        # If no connection is selected, return an empty figure
+'''
+# Callback: Update airline dropdown based on selected route
+@app.callback(
+    Output('airline-selector', 'options'),
+    Output('airline-selector', 'value'),
+    Input('route-selector', 'value')
+)
+def update_airline_options(selected_route):
+    if not selected_route:
+        return [], "all"
+
+    origin, dest = selected_route.split('-')
+    filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
+    airlines = sorted(filtered["UNIQUE_CARRIER_NAME"].dropna().unique())
+
+    options = [{"label": airline, "value": airline} for airline in airlines]
+    options.append({"label": "All Airlines", "value": "all"})
+
+    return options, "all"
+
+# Callback: Update load factor graph
+@app.callback(
+    Output('lf-graph', 'figure'),
+    Input('route-selector', 'value'),
+    Input('year-selector', 'value'),
+    Input('airline-selector', 'value')
+)
+def update_graph(route_value, selected_year, selected_airline):
+    if not route_value:
         return go.Figure()
 
-    # Filter the dataset for the selected connection
-    sub = data[data["con_key"] == con_key]
+    origin, dest = route_value.split('-')
+    filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
 
-    # Further filter by selected year (if not 'all')
     if selected_year != "all":
-        sub = sub[sub["YEAR"] == int(selected_year)]
+        filtered = filtered[filtered["YEAR"] == int(selected_year)]
 
-    # Create a line chart 
+    if selected_airline != "all":
+        filtered = filtered[filtered["UNIQUE_CARRIER_NAME"] == selected_airline]
+    else:
+        # Aggregate over all airlines
+        filtered = filtered.groupby(["YEAR", "MONTH"], as_index=False).agg({
+            "PASSENGERS": "sum",
+            "SEATS": "sum",
+            "DEPARTURES_PERFORMED": "sum"
+        })
+        filtered["DATE"] = pd.to_datetime(filtered["YEAR"].astype(str) + "-" + filtered["MONTH"].astype(str) + "-01")
+        filtered["LOAD_FACTOR"] = filtered.apply(
+            lambda row: row["PASSENGERS"] / row["SEATS"] if row["SEATS"] > 0 else 0,
+            axis=1
+        )
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(
-        x=sub["DATE"],
-        y=sub["LOAD_FACTOR"],
+        x=filtered["DATE"],
+        y=filtered["LOAD_FACTOR"],
         mode='lines+markers',
-        name="Load Factor"
+        name='Load Factor'
     ))
 
-    # Customize the appearance of the chart (dark theme)
     fig.update_layout(
-        title=f"Load Factor for {con_key}",
+        title=f"Load Factor for {origin} → {dest}",
         xaxis_title="Date",
         yaxis_title="Load Factor",
         plot_bgcolor='#222222',
         paper_bgcolor='#111111',
         font_color='white'
     )
+
     return fig
 
-
+# Callback: Update top 10 routes table
 @app.callback(
     Output('top-routes-table', 'children'),
     Input('top-routes-year-selector', 'value')
 )
 def update_top_routes_table(selected_year):
-    if selected_year == "all":
-        df_filtered = data
-    else:
-        df_filtered = data[data["YEAR"] == int(selected_year)]
-
+    df_filtered = data if selected_year == "all" else data[data["YEAR"] == int(selected_year)]
     top_routes = compute_top_routes(df_filtered)
 
     return dash_table.DataTable(
@@ -144,18 +252,10 @@ def update_top_routes_table(selected_year):
         ],
         data=top_routes.to_dict("records"),
         style_table={'overflowX': 'auto'},
-        style_cell={
-            'backgroundColor': '#111111',
-            'color': 'white',
-            'padding': '8px',
-        },
-        style_header={
-            'backgroundColor': '#222222',
-            'fontWeight': 'bold'
-        }
+        style_cell={'backgroundColor': '#111111', 'color': 'white', 'padding': '8px'},
+        style_header={'backgroundColor': '#222222', 'fontWeight': 'bold'}
     )
-   
 
-# Start the Dash web server when the script is run directly
+# Run app
 if __name__ == '__main__':
     app.run(debug=True)
