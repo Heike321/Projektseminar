@@ -21,7 +21,7 @@ app.title = "Flight Dashboard"
 app.layout = html.Div(
     style={'backgroundColor': '#111111', 'color': 'white', 'padding': '20px'},
     children=[
-        html.H1("Flight Connection Dashboard", style={'textAlign': 'center'}),
+        html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
 
         html.Div(style={'display': 'flex'}, children=[
             # LEFT SIDE: Graph and controls
