@@ -3,6 +3,7 @@ from dash import dcc, html, Input, Output, dash_table
 import pandas as pd
 import json
 import plotly.graph_objects as go
+import plotly.express as px
 from analysis import compute_top_routes  
 
 # Load and preprocess data
@@ -84,12 +85,23 @@ app.layout = html.Div(
                         {"label": "2024", "value": 2024}
                     ],
                     value="all",
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
                     clearable=False,
                     #style={'backgroundColor': 'white', 'color': 'black'}
                 ),
+                html.Label("Select month:"),
+                dcc.Dropdown(
+                    id='top-routes-month-selector',
+                    options=[{"label": "All month", "value": "all"}]+
+                        [{"label": str(m), "value": m} for m in range(1, 13)],
+                    value=1,
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
+                    clearable=False
+                ),
+
 
                 html.Br(),
-
+                dcc.Graph(id='top-routes-bar'),
                 html.Div(id='top-routes-table')
             ])
         ])
@@ -238,23 +250,60 @@ def update_graph(route_value, selected_year, selected_airline):
 
 # Callback: Update top 10 routes table
 @app.callback(
-    Output('top-routes-table', 'children'),
-    Input('top-routes-year-selector', 'value')
+    [Output('top-routes-bar', 'figure'),
+    Output('top-routes-table', 'children')],
+    [Input('top-routes-year-selector', 'value'),
+    Input('top-routes-month-selector', 'value')]
 )
-def update_top_routes_table(selected_year):
-    df_filtered = data if selected_year == "all" else data[data["YEAR"] == int(selected_year)]
-    top_routes = compute_top_routes(df_filtered)
+def update_top_routes_visuals(selected_year, selected_month):
+    df_filtered = data.copy()
 
-    return dash_table.DataTable(
+    if selected_year != "all":
+        df_filtered = df_filtered[df_filtered["YEAR"] == int(selected_year)]
+
+    if selected_month!= "all":
+        df_filtered = df_filtered[df_filtered["MONTH"] == int(selected_month)]
+
+    df_filtered = df_filtered[df_filtered["SEATS"] > 0]
+    df_filtered["ROUTE"] = df_filtered["ORIGIN"] + " → " + df_filtered["DEST"]
+    df_filtered["LOAD_FACTOR"] = df_filtered["PASSENGERS"] / df_filtered["SEATS"]
+
+    top_routes = df_filtered.groupby("ROUTE", as_index=False).agg({
+        "PASSENGERS": "sum",
+        "SEATS": "sum"
+    })
+    top_routes["LOAD_FACTOR"] = top_routes["PASSENGERS"] / top_routes["SEATS"]
+    top_routes = top_routes.sort_values("PASSENGERS", ascending=False).head(10)
+
+    fig = px.bar(
+        top_routes,
+        x="ROUTE",
+        y="PASSENGERS",
+        title="Top 10 Routes by Passengers",
+        labels={"PASSENGERS": "Number of Passengers"},
+    )
+    fig.update_layout(
+        xaxis_tickangle=-45,
+        plot_bgcolor='#222222',
+        paper_bgcolor='#111111',
+        font_color='white'
+    )
+
+    table = dash_table.DataTable(
         columns=[
             {"name": "Route", "id": "ROUTE"},
-            {"name": "Passengers", "id": "PASSENGERS", "type": "numeric", "format": {"specifier": ","}}
+            {"name": "Passengers", "id": "PASSENGERS", "type": "numeric", "format": {"specifier": ","}},
+            {"name": "Seats", "id": "SEATS", "type": "numeric", "format": {"specifier": ","}},
+            {"name": "Load Factor", "id": "LOAD_FACTOR", "type": "numeric", "format": {"specifier": ".2%"}},
         ],
         data=top_routes.to_dict("records"),
         style_table={'overflowX': 'auto'},
         style_cell={'backgroundColor': '#111111', 'color': 'white', 'padding': '8px'},
         style_header={'backgroundColor': '#222222', 'fontWeight': 'bold'}
     )
+
+    return fig, table
+
 
 # Run app
 if __name__ == '__main__':

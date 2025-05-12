@@ -39,12 +39,7 @@ def preprocess():
     
     # Iterate over each year file and process the data
     for f, year in zip(files, [2022, 2023, 2024]):
-        df = pd.read_csv(f)#(f, usecols=[
-            #"PASSENGERS", "DEPARTURES_PERFORMED", "SEATS",
-            #"AIRLINE_ID", "UNIQUE_CARRIER_ENTITY", "ORIGIN",
-            #"DEST", "AIRCRAFT_TYPE", "MONTH"
-        #])
-        
+        df = pd.read_csv(f)
         # Create a unique connection key for each row
         df["con_key"] = df.apply(lambda row: make_key(
             row["AIRLINE_ID"],
