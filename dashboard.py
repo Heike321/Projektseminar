@@ -10,7 +10,7 @@ from analysis import compute_top_routes
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
 
-with open("Data/valid_routes.json") as f:
+with open("Data/valid_connections.json") as f:
     route_options = json.load(f)
 
 # Initialize Dash app 
