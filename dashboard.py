@@ -38,7 +38,7 @@ app.layout = html.Div(
                     )
                 ], style={'marginBottom': '20px'}),  # <- Achtung: "marginBottom", nicht "marginButtom"
 
-                # Airline and Year dropdowns side-by-side
+                # Airline and Year dropdowns
                 html.Div([
                     html.Div([
                         html.Label("Select airline:"),
@@ -68,7 +68,8 @@ app.layout = html.Div(
                 ], style={'display': 'flex', 'marginBottom': '20px'}),
 
                 # Graph
-                dcc.Graph(id='lf-graph')
+                dcc.Graph(id='lf-graph'),
+                dcc.Graph(id='passenger-graph')
             ]),
 
             # RIGHT SIDE: Top Routes Table
@@ -304,6 +305,49 @@ def update_top_routes_visuals(selected_year, selected_month):
 
     return fig, table
 
+# Callback: Update passenger graph
+@app.callback(
+    Output('passenger-graph', 'figure'),
+    Input('route-selector', 'value'),
+    Input('year-selector', 'value'),
+    Input('airline-selector', 'value')
+)
+def update_passenger_graph(route_value, selected_year, selected_airline):
+    if not route_value:
+        return go.Figure()
+
+    origin, dest = route_value.split('-')
+    filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
+
+    if selected_year != "all":
+        filtered = filtered[filtered["YEAR"] == int(selected_year)]
+
+    if selected_airline != "all":
+        filtered = filtered[filtered["UNIQUE_CARRIER_NAME"] == selected_airline]
+    else:
+        filtered = filtered.groupby(["YEAR", "MONTH"], as_index=False).agg({
+            "PASSENGERS": "sum"
+        })
+        filtered["DATE"] = pd.to_datetime(filtered["YEAR"].astype(str) + "-" + filtered["MONTH"].astype(str) + "-01")
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=filtered["DATE"],
+        y=filtered["PASSENGERS"],
+        mode='lines+markers',
+        name='Passengers'
+    ))
+
+    fig.update_layout(
+        title=f"Monthly Passenger Volume for {origin} → {dest}",
+        xaxis_title="Date",
+        yaxis_title="Passengers",
+        plot_bgcolor='#222222',
+        paper_bgcolor='#111111',
+        font_color='white'
+    )
+
+    return fig
 
 # Run app
 if __name__ == '__main__':
