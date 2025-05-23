@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from analysis import compute_top_routes  
 from forecasting import forecast_passengers
+from preprocess import iata_to_name
 
 # Load and preprocess data
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
@@ -13,6 +14,8 @@ data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].ast
 
 with open("Data/valid_routes.json") as f:
     route_options = json.load(f)
+
+iata_codes = data["ORIGIN"].dropna().unique()
 
 # Initialize Dash app 
 app = dash.Dash(__name__)
@@ -78,8 +81,25 @@ app.layout = html.Div(
             ]),
 
             # RIGHT SIDE: Top Routes Table
+            
+   
+
+
+
             html.Div(style={'flex': 1}, children=[
-                html.H2("Top 10 Routes", style={'textAlign': 'center'}),
+                html.H2("Route Map", style={'textAlign': 'center'}),
+                html.Label("Select "),
+                dcc.Dropdown(
+                    id="origin-dropdown",
+                    options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
+                   # options=[{"label": f"{name} ({iata})", "value": iata} for iata, name in iata_to_name.items()],
+                    placeholder="Select origin airport",
+                    clearable=True,
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                    
+                ),
+                dcc.Graph(id='route-map'),
+                html.H3("Top 10 Routes", style={'textAlign': 'center'}),
 
                 html.Label("Select year:"),
                 dcc.Dropdown(
@@ -112,6 +132,108 @@ app.layout = html.Div(
             ])
         ])
     ])
+
+@app.callback(
+    Output("route-map", "figure"),
+    Input("origin-dropdown", "value")
+)
+def update_map(selected_origin):
+    
+    fig = go.Figure()
+
+    # Always show the world map
+    fig.add_trace(go.Scattergeo(
+        lon=[0],
+        lat=[0],
+        mode='markers',
+        marker=dict(size=0, color='rgba(0,0,0,0)'),
+        showlegend=False,
+        hoverinfo='skip'
+    ))
+
+    # If a departure airport is selected:
+    if selected_origin:
+        filtered = data[data["ORIGIN"] == selected_origin]
+
+        # Mark starting point (visible)
+        start_row = filtered.iloc[0] if not filtered.empty else None
+        if start_row is not None:
+            fig.add_trace(go.Scattergeo(
+                lon=[start_row["ORIGIN_LON"]],
+                lat=[start_row["ORIGIN_LAT"]],
+                mode='markers',
+                showlegend=False,
+                marker=dict(size=10, color='limegreen'),
+                name="Start"
+            ))
+
+        for _, row in filtered.iterrows():
+            # Line
+            fig.add_trace(go.Scattergeo(
+                lon=[row["ORIGIN_LON"], row["DEST_LON"]],
+                lat=[row["ORIGIN_LAT"], row["DEST_LAT"]],
+                mode='lines',
+                line=dict(width=1, dash='dot', color='cyan'),
+                opacity=0.6,
+                hoverinfo='text',
+                showlegend=False,
+                text=f"{iata_to_name.get(row['ORIGIN'], row['ORIGIN'])} → {iata_to_name.get(row['DEST'], row['DEST'])}"
+            ))
+            '''
+            # Zielmarker mit Legende für jedes Ziel (Funktioniert noch nicht... die Legende wiederholt sich immer wieder)
+            filtered = filtered.copy()
+            filtered["DEST_LAT"] = filtered["DEST_LAT"].round(3)
+            filtered["DEST_LON"] = filtered["DEST_LON"].round(3)
+            unique_dests = filtered.drop_duplicates(subset=["DEST", "DEST_LAT", "DEST_LON"])
+
+            for _, dest_row in unique_dests.iterrows():
+                fig.add_trace(go.Scattergeo(
+                    lon=[dest_row["DEST_LON"]],
+                    lat=[dest_row["DEST_LAT"]],
+                    mode='markers',
+                    marker=dict(size=8, symbol='star', color='red'),
+                    name=f"Ziel: {iata_to_name.get(dest_row['DEST'], dest_row['DEST'])}",
+                    showlegend=True,
+                    hoverinfo='skip'
+                ))
+            '''
+            # Target marker
+            fig.add_trace(go.Scattergeo(
+                lon=[row["DEST_LON"]],
+                lat=[row["DEST_LAT"]],
+                mode='markers',
+                marker=dict(size=8, symbol='star', color='red'),
+                showlegend=False,
+                hoverinfo='skip'
+            ))
+            
+    # Geo settings (no border, no labels)
+    fig.update_geos(
+        projection_type="natural earth",
+        showland=True,
+        landcolor="gray",
+        showcountries=False,
+        showocean=False,
+        showlakes=False,
+        showcoastlines=False,
+        lataxis_showgrid=False,
+        lonaxis_showgrid=False,
+        resolution=50,
+        visible=True
+    )
+
+    # Layout transparent
+    fig.update_layout(
+        geo_bgcolor='rgba(0,0,0,0)',     
+        paper_bgcolor='rgba(0,0,0,0)',   
+        plot_bgcolor='rgba(0,0,0,0)',    
+        margin={"r":0, "t":0, "l":0, "b":0}
+    )
+
+    return fig
+
+    
+    
 
 # Callback: Update airline dropdown based on selected route
 @app.callback(
