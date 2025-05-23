@@ -9,7 +9,7 @@ from forecasting import forecast_passengers
 from preprocess import iata_to_name
 
 # Load and preprocess data
-data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv")
+data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", low_memory=False)
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
 
 with open("Data/valid_routes.json") as f:
