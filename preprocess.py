@@ -18,6 +18,17 @@ columns_to_keep = [
     "DEST_COUNTRY", "DEST_COUNTRY_NAME", "DEST_WAC", "AIRCRAFT_GROUP", "AIRCRAFT_TYPE",
     "AIRCRAFT_CONFIG", "YEAR", "QUARTER", "MONTH", "DISTANCE_GROUP", "CLASS"
 ]
+# 
+airports_df = pd.read_csv("airports.dat", header=None, names=[
+        "Airport_ID", "Name", "City", "Country", "IATA", "ICAO",
+        "Latitude", "Longitude", "Altitude", "Timezone", "DST",
+        "Tz_database_time_zone", "Type", "Source"
+    ])
+    
+    # Create a dictionary to map IATA codes to airport names
+iata_to_name = dict(zip(airports_df["IATA"], airports_df["Name"]))
+#iata_to_coords = airports_df.set_index("IATA")[["Latitude", "Longitude"]].dropna().to_dict(orient="index")
+iata_to_coords = airports_df.drop_duplicates(subset=["IATA"]).set_index("IATA")[["Latitude", "Longitude"]].dropna().to_dict(orient="index")
 
 def preprocess():
     # List of raw flight connection data files
@@ -80,22 +91,19 @@ def preprocess():
 
     # Concatenate all years' grouped data into a single DataFrame
     final_grouped = pd.concat(all_grouped, ignore_index=True)
+
     
+    final_grouped["ORIGIN_LAT"] = final_grouped["ORIGIN"].map(lambda x: iata_to_coords.get(x, {}).get("Latitude"))
+    final_grouped["ORIGIN_LON"] = final_grouped["ORIGIN"].map(lambda x: iata_to_coords.get(x, {}).get("Longitude"))
+    final_grouped["DEST_LAT"] = final_grouped["DEST"].map(lambda x: iata_to_coords.get(x, {}).get("Latitude"))
+    final_grouped["DEST_LON"] = final_grouped["DEST"].map(lambda x: iata_to_coords.get(x, {}).get("Longitude"))
     # Save the final grouped data into a single CSV file
     final_grouped.to_csv("Data/Grouped_All_Valid_Connections.csv", index=False)
 
     # Print the summary of processed rows
     print(f"Total filtered and grouped rows saved: {len(final_grouped)}")
 
-    # 
-    airports_df = pd.read_csv("airports.dat", header=None, names=[
-        "Airport_ID", "Name", "City", "Country", "IATA", "ICAO",
-        "Latitude", "Longitude", "Altitude", "Timezone", "DST",
-        "Tz_database_time_zone", "Type", "Source"
-    ])
     
-    # Create a dictionary to map IATA codes to airport names
-    iata_to_name = dict(zip(airports_df["IATA"], airports_df["Name"]))
 
     # Sample a dataframe from the first year to get the connection labels
     sample_df = all_grouped[0][all_grouped[0]["con_key"].isin(passed_keys)]
