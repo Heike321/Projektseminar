@@ -1,21 +1,30 @@
 import dash
 from dash import dcc, html, Input, Output, dash_table
 import pandas as pd
+from scipy import stats
 import json
 import plotly.graph_objects as go
 import plotly.express as px
-from analysis import compute_top_routes  
-from forecasting import forecast_passengers
+from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot  
+from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year
 from preprocess import iata_to_name
+import warnings
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 # Load and preprocess data
-data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", low_memory=False)
+data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
+
 
 with open("Data/valid_routes.json") as f:
     route_options = json.load(f)
 
+
+
 iata_codes = data["ORIGIN"].dropna().unique()
+
+
 
 # Initialize Dash app 
 app = dash.Dash(__name__)
@@ -26,7 +35,7 @@ app.layout = html.Div(
     style={'backgroundColor': '#111111', 'color': 'white', 'padding': '20px'},
     children=[
         html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
-
+        
         html.Div(style={'display': 'flex'}, children=[
             # LEFT SIDE: Graph and controls
             html.Div(style={'flex': 2, 'marginRight': '40px'}, children=[
@@ -40,7 +49,7 @@ app.layout = html.Div(
                         placeholder="Choose a route",
                         style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
                     )
-                ], style={'marginBottom': '20px'}),  # <- Achtung: "marginBottom", nicht "marginButtom"
+                ], style={'marginBottom': '20px'}),  
 
                 # Airline and Year dropdowns
                 html.Div([
@@ -59,7 +68,7 @@ app.layout = html.Div(
                         dcc.Dropdown(
                             id='year-selector',
                             options=[
-                                {"label": "All years", "value": "all"},
+                                {"label": "Years 2022-2024", "value": "all"},
                                # {"label": "All years with forecast for 2025", "value": "all_2025"},
                                 {"label": "2022", "value": 2022},
                                 {"label": "2023", "value": 2023},
@@ -76,6 +85,29 @@ app.layout = html.Div(
                 ], style={'display': 'flex', 'marginBottom': '20px'}),
 
                 # Graph
+                dcc.Tabs(
+                    [
+                        dcc.Tab(label='Trend', children=[
+                            dcc.Graph(id='trend-graph')
+                        ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+        
+                        dcc.Tab(label='Seasonality', children=[
+                            dcc.Graph(id='seasonality-graph')
+                        ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+        
+                        dcc.Tab(label='Outliers', children=[
+                            dcc.Graph(id='outliers-graph')
+                        ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+                    ],
+                    style={'backgroundColor': '#111111'},  
+                    colors={
+                        'border': 'white',
+                        'primary': 'orange',  
+                        'background': '#111111'  
+                    }
+                ),
+
+               
                 dcc.Graph(id='lf-graph'),
                 dcc.Graph(id='passenger-graph')
             ]),
@@ -88,7 +120,7 @@ app.layout = html.Div(
 
             html.Div(style={'flex': 1}, children=[
                 html.H2("Route Map", style={'textAlign': 'center'}),
-                html.Label("Select "),
+                html.Label("Select origin airport:"),
                 dcc.Dropdown(
                     id="origin-dropdown",
                     options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
@@ -202,10 +234,23 @@ def update_map(selected_origin):
                 lon=[row["DEST_LON"]],
                 lat=[row["DEST_LAT"]],
                 mode='markers',
-                marker=dict(size=8, symbol='star', color='red'),
+                marker=dict(size=8, color='red'),
                 showlegend=False,
                 hoverinfo='skip'
             ))
+            '''
+            # Airplane (funktioniert auch noch nicht richtig...)
+            mid_lat = (row["ORIGIN_LAT"] + row["DEST_LAT"]) / 2
+            mid_lon = (row["ORIGIN_LON"] + row["DEST_LON"]) / 2
+            fig.add_trace(go.Scattergeo(
+                lon=[mid_lon],
+                lat=[mid_lat],
+                mode='text',
+                text='✈',
+                textfont=dict(size=20, color='white'),
+                showlegend=False
+            ))
+            '''
             
     # Geo settings (no border, no labels)
     fig.update_geos(
@@ -310,241 +355,164 @@ def update_top_routes_visuals(selected_year, selected_month):
 
     return fig, table
 
-
+#Left: 
 @app.callback(
+    Output('trend-graph', 'figure'),
+    Output('seasonality-graph', 'figure'),
+    Output('outliers-graph', 'figure'),
     Output('lf-graph', 'figure'),
     Output('passenger-graph', 'figure'),
     Input('route-selector', 'value'),
-    Input('year-selector', 'value'),
-    Input('airline-selector', 'value')
+    Input('airline-selector', 'value'),
+    Input('year-selector', 'value')
 )
-def update_graphs(route_value, selected_year, selected_airline):
-    if not route_value:
-        return go.Figure(), go.Figure()
-
-    origin, dest = route_value.split('-')
-    filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
-
-    if selected_airline != "all":
-        filtered = filtered[filtered["UNIQUE_CARRIER_NAME"] == selected_airline]
-    else:
-        filtered = filtered.groupby(["YEAR", "MONTH"], as_index=False).agg({
-            "PASSENGERS": "sum",
-            "SEATS": "sum"
-        })
-
-    filtered["DATE"] = pd.to_datetime(filtered["YEAR"].astype(str) + "-" + filtered["MONTH"].astype(str) + "-01")
-    filtered["LOAD_FACTOR"] = filtered.apply(
-        lambda row: row["PASSENGERS"] / row["SEATS"] if row["SEATS"] > 0 else 0, axis=1)
-
+def update_all_graphs(selected_route, selected_airline, selected_year):
+    # Initial empty figures
+    trend_fig = no_forecast_figure("You have to choose a route!")
+    seasonality_fig = no_forecast_figure("You have to choose a route!")
+    outliers_fig = no_forecast_figure("You have to choose a route!")
     lf_fig = go.Figure()
     pax_fig = go.Figure()
 
-    if selected_year == "forecast_2024":
-        filtered_2024 = filtered[filtered["YEAR"] == 2024]
-        filtered_before_2024 = filtered[filtered["YEAR"] < 2024]
+    # Return early if no route selected
+    if not selected_route:
+        return trend_fig, seasonality_fig, outliers_fig, lf_fig, pax_fig
 
-        forecast_df = forecast_passengers(filtered_before_2024[["DATE", "PASSENGERS"]], periods=12)
-        avg_seat_ratio = filtered_before_2024["SEATS"].sum() / filtered_before_2024["PASSENGERS"].sum()
-        forecast_df["SEATS"] = forecast_df["FORECAST_PASSENGERS"] * avg_seat_ratio
-        forecast_df["LOAD_FACTOR"] = forecast_df["FORECAST_PASSENGERS"] / forecast_df["SEATS"]
+    origin, dest = selected_route.split('-')
 
-        # Load Factor
+    # Filter by route
+    filtered = data[(data['ORIGIN'] == origin) & (data['DEST'] == dest)]
+
+    # Filter by airline if not 'all'
+    if selected_airline and selected_airline != 'all':
+        filtered = filtered[filtered['UNIQUE_CARRIER_NAME'] == selected_airline]
+
+    # Add DATE column if not present
+    if 'DATE' not in filtered.columns:
+        filtered['DATE'] = pd.to_datetime(filtered['YEAR'].astype(str) + '-' + 
+                                          filtered['MONTH'].astype(str).str.zfill(2) + '-01')
+
+    # Calculate load factor safely
+    filtered['LOAD_FACTOR'] = filtered.apply(
+        lambda row: row['PASSENGERS'] / row['SEATS'] if row['SEATS'] > 0 else 0, axis=1)
+
+    # If forecast selected, generate forecast data and plot
+    if isinstance(selected_year, str) and selected_year.startswith("forecast_"):
+        forecast_year = int(selected_year.split('_')[1])
+
+        # Get forecast dataframe for the forecast_year
+        forecast_df = get_forecast_for_year(filtered, forecast_year)
+
+        # Filter actual data for forecast year (if available)
+        actual_df = filtered[filtered['YEAR'] == forecast_year]
+
+        # Load Factor figure
         lf_fig.add_trace(go.Scatter(
-            x=filtered_2024["DATE"], y=filtered_2024["LOAD_FACTOR"],
-            mode='lines+markers', name="Actual 2024"
+            x=actual_df['DATE'], y=actual_df['LOAD_FACTOR'],
+            mode='lines+markers', name=f'Actual {forecast_year}'
         ))
         lf_fig.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["LOAD_FACTOR"],
-            mode='lines+markers', name="Forecast 2024", line=dict(dash='dot')
+            x=forecast_df['DATE'], y=forecast_df['FORECAST_LOAD_FACTOR'],
+            mode='lines+markers', name=f'Forecast {forecast_year}', line=dict(dash='dot')
         ))
 
-        # Passengers
+        # Passengers figure
         pax_fig.add_trace(go.Scatter(
-            x=filtered_2024["DATE"], y=filtered_2024["PASSENGERS"],
-            mode='lines+markers', name="Actual Passengers 2024"
+            x=actual_df['DATE'], y=actual_df['PASSENGERS'],
+            mode='lines+markers', name=f'Actual Passengers {forecast_year}'
         ))
         pax_fig.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["FORECAST_PASSENGERS"],
-            mode='lines+markers', name="Forecast Passengers", line=dict(dash='dot')
+            x=forecast_df['DATE'], y=forecast_df['FORECAST_PASSENGERS'],
+            mode='lines+markers', name=f'Forecast Passengers {forecast_year}', line=dict(dash='dot')
         ))
 
-    elif selected_year == "forecast_2025":
-        forecast_df = forecast_passengers(filtered[["DATE", "PASSENGERS"]], periods=12)
-        avg_seat_ratio = filtered["SEATS"].sum() / filtered["PASSENGERS"].sum()
-        forecast_df["SEATS"] = forecast_df["FORECAST_PASSENGERS"] * avg_seat_ratio
-        forecast_df["LOAD_FACTOR"] = forecast_df["FORECAST_PASSENGERS"] / forecast_df["SEATS"]
-
-        lf_fig.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["LOAD_FACTOR"],
-            mode='lines+markers', name="Forecast 2025", line=dict(dash='dash')
-        ))
-        pax_fig.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["FORECAST_PASSENGERS"],
-            mode='lines+markers', name="Forecast Passengers", line=dict(dash='dash')
-        ))
+        # For forecast, show no forecast plots for trend/seasonality/outliers
+        trend_fig = no_forecast_figure("No forecast for trend")
+        seasonality_fig = no_forecast_figure("No forecast for seasonality")
+        outliers_fig = no_forecast_figure("No forecast for outliers")
 
     else:
-        if selected_year != "all":
-            filtered = filtered[filtered["YEAR"] == int(selected_year)]
+        # For historical years or 'all', filter accordingly
+        if selected_year != 'all':
+            try:
+                year_int = int(selected_year)
+                filtered = filtered[filtered['YEAR'] == year_int]
+            except Exception:
+                pass
+        
+        # Now create trend, seasonality, outliers plots 
+        trend_fig = get_trend_plot(filtered)
+
+        if selected_year == 'all' and len(filtered) >= 24:
+            seasonality_fig = get_seasonality_plot(filtered)
+        elif selected_year == 'all':
+            seasonality_fig = no_forecast_figure("Not enough data for seasonality")
+        else:
+            seasonality_fig = no_forecast_figure("Seasonality only shown for all years")
+        
+        outliers_fig = get_outliers_plot(filtered)
+
+        # Load Factor figure for historical data
+        filtered_agg = filtered.groupby(['YEAR', 'MONTH'], as_index=False).agg({
+            'PASSENGERS': 'sum',
+            'SEATS': 'sum'
+        })
+        filtered_agg['DATE'] = pd.to_datetime(filtered_agg['YEAR'].astype(str) + '-' +
+                                             filtered_agg['MONTH'].astype(str).str.zfill(2) + '-01')
+        filtered_agg['LOAD_FACTOR'] = filtered_agg.apply(
+            lambda row: row['PASSENGERS'] / row['SEATS'] if row['SEATS'] > 0 else 0, axis=1)
 
         lf_fig.add_trace(go.Scatter(
-            x=filtered["DATE"], y=filtered["LOAD_FACTOR"],
-            mode='lines+markers', name="Load Factor"
+            x=filtered_agg['DATE'], y=filtered_agg['LOAD_FACTOR'],
+            mode='lines+markers', name='Load Factor'
         ))
         pax_fig.add_trace(go.Scatter(
-            x=filtered["DATE"], y=filtered["PASSENGERS"],
-            mode='lines+markers', name="Passengers"
+            x=filtered_agg['DATE'], y=filtered_agg['PASSENGERS'],
+            mode='lines+markers', name='Passengers'
         ))
 
-    
-    # Layout
+    # Set layout themes for lf and pax figures
     for fig in [lf_fig, pax_fig]:
         fig.update_layout(
             plot_bgcolor='#222222',
             paper_bgcolor='#111111',
-            font_color='white'
+            font_color='white',
+            margin=dict(l=40, r=40, t=60, b=40)
         )
 
     lf_fig.update_layout(
         title=f"Load Factor for {origin} → {dest}",
-        xaxis_title="Date",
-        yaxis_title="Load Factor"
+        xaxis_title='Date',
+        yaxis_title='Load Factor'
     )
-
     pax_fig.update_layout(
         title=f"Passenger Volume for {origin} → {dest}",
-        xaxis_title="Date",
-        yaxis_title="Passengers"
+        xaxis_title='Date',
+        yaxis_title='Passengers'
     )
 
-    return lf_fig, pax_fig
+    return trend_fig, seasonality_fig, outliers_fig, lf_fig, pax_fig
 
-'''
 
-@app.callback(
-    Output('lf-graph', 'figure'),
-    Output('passenger-graph', 'figure'),
-    Input('route-selector', 'value'),
-    Input('year-selector', 'value'),
-    Input('airline-selector', 'value')
-)
-def update_graphs(route_value, selected_year, selected_airline):
-    if not route_value:
-        return go.Figure(), go.Figure()
-
-    origin, dest = route_value.split('-')
-    df = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
-
-    if selected_airline != "all":
-        df = df[df["UNIQUE_CARRIER_NAME"] == selected_airline]
-
-    # Aggregate data
-    if selected_airline == "all":
-        df = df.groupby(["YEAR", "MONTH"], as_index=False).agg({
-            "PASSENGERS": "sum",
-            "SEATS": "sum"
-        })
-
-    df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")
-    df["LOAD_FACTOR"] = df.apply(lambda row: row["PASSENGERS"] / row["SEATS"] if row["SEATS"] > 0 else 0, axis=1)
-
-    fig_lf = go.Figure()
-    fig_passengers = go.Figure()
-
-    if selected_year in [2022, 2023, 2024]:
-        df_year = df[df["YEAR"] == int(selected_year)]
-
-        fig_lf.add_trace(go.Scatter(
-            x=df_year["DATE"], y=df_year["LOAD_FACTOR"],
-            mode='lines+markers', name=f"Load Factor {selected_year}"
-        ))
-
-        fig_passengers.add_trace(go.Scatter(
-            x=df_year["DATE"], y=df_year["PASSENGERS"],
-            mode='lines+markers', name=f"Passengers {selected_year}"
-        ))
-
-    elif selected_year == "all":
-        fig_lf.add_trace(go.Scatter(
-            x=df["DATE"], y=df["LOAD_FACTOR"],
-            mode='lines+markers', name="Load Factor (2022–2024)"
-        ))
-
-        fig_passengers.add_trace(go.Scatter(
-            x=df["DATE"], y=df["PASSENGERS"],
-            mode='lines+markers', name="Passengers (2022–2024)"
-        ))
-
-    elif selected_year == "forecast_2024":
-        forecast_df = forecast_passengers(df, forecast_year=2024)
-        fig_lf.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["LOAD_FACTOR"],
-            mode='lines+markers', name="Forecast 2024 (LF)",
-            line=dict(dash="dot", color="orange")
-        ))
-        fig_passengers.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["PASSENGERS"],
-            mode='lines+markers', name="Forecast 2024 (Passengers)",
-            line=dict(dash="dot", color="orange")
-        ))
-
-    elif selected_year == "forecast_2025":
-        forecast_df = forecast_passengers(df, forecast_year=2025)
-        fig_lf.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["LOAD_FACTOR"],
-            mode='lines+markers', name="Forecast 2025 (LF)",
-            line=dict(dash="dot", color="lightblue")
-        ))
-        fig_passengers.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["PASSENGERS"],
-            mode='lines+markers', name="Forecast 2025 (Passengers)",
-            line=dict(dash="dot", color="lightblue")
-        ))
-
-    elif selected_year == "all_2025":
-        fig_lf.add_trace(go.Scatter(
-            x=df["DATE"], y=df["LOAD_FACTOR"],
-            mode='lines+markers', name="Load Factor (2022–2024)"
-        ))
-        fig_passengers.add_trace(go.Scatter(
-            x=df["DATE"], y=df["PASSENGERS"],
-            mode='lines+markers', name="Passengers (2022–2024)"
-        ))
-
-        forecast_df = forecast_passengers(df, forecast_year=2025)
-        fig_lf.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["LOAD_FACTOR"],
-            mode='lines+markers', name="Forecast 2025 (LF)",
-            line=dict(dash="dot", color="lightblue")
-        ))
-        fig_passengers.add_trace(go.Scatter(
-            x=forecast_df["DATE"], y=forecast_df["PASSENGERS"],
-            mode='lines+markers', name="Forecast 2025 (Passengers)",
-            line=dict(dash="dot", color="lightblue")
-        ))
-
-    # Style for both graphs
-    for fig in [fig_lf, fig_passengers]:
-        fig.update_layout(
-            plot_bgcolor='#222222',
-            paper_bgcolor='#111111',
-            font_color='white',
-            xaxis_title="Date"
-        )
-
-    fig_lf.update_layout(
-        yaxis_title="Load Factor",
-        title=f"Load Factor for {origin} → {dest}"
+def no_forecast_figure(message="No forecast available"):
+    fig = go.Figure()
+    fig.add_annotation(
+        x=0.5, y=0.5,
+        text=message,
+        showarrow=False,
+        font=dict(size=16),
+        xref="paper",
+        yref="paper"
     )
-
-    fig_passengers.update_layout(
-        yaxis_title="Passengers",
-        title=f"Passenger Volume for {origin} → {dest}"
+    fig.update_layout(
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        margin=dict(l=20, r=20, t=40, b=20)
     )
+    return fig
 
-    return fig_lf, fig_passengers
-'''
 # Run app
 if __name__ == '__main__':
     app.run(debug=True)
