@@ -1,6 +1,12 @@
 import pandas as pd
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+import pandas as pd
+import numpy as np
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import warnings 
 
+warnings.filterwarnings("ignore")
 
 def load_historical_data(file_path):
     #Load combined CSV and filter for historical years (2022 and 2023).
@@ -70,4 +76,65 @@ def get_forecast_for_year(df, target_year, periods=12):
 
     forecast_df = pax_forecast_df.merge(lf_forecast_df, on='DATE', how='left')
     return forecast_df
+
+
+
+
+def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
+   
+    # Sort and reset index for consistency
+    df = df.sort_values('DATE').reset_index(drop=True)
+    
+    # Split data into training (before validation), validation, and full training (before prediction)
+    train_initial = df[df['DATE'] < valid_start]
+    valid_2024 = df[(df['DATE'] >= valid_start) & (df['DATE'] < pred_start)]
+    full_train = df[df['DATE'] < pred_start]
+
+    try:
+        # Fit SARIMA model on initial training data
+        model_initial = SARIMAX(train_initial['PASSENGERS'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+        model_fit_initial = model_initial.fit(disp=False)
+
+        # Forecast validation period (2024)
+        forecast_valid = model_fit_initial.get_forecast(steps=len(valid_2024))
+        forecast_df_2024 = pd.DataFrame({
+            'DATE': valid_2024['DATE'].values,
+            'VALUE': forecast_valid.predicted_mean,
+            'TYPE': 'Forecast 2024'
+        })
+
+        # Calculate validation errors
+        mae = mean_absolute_error(valid_2024['PASSENGERS'], forecast_valid.predicted_mean)
+        rmse = np.sqrt(mean_squared_error(valid_2024['PASSENGERS'], forecast_valid.predicted_mean))
+        error_text = f"📏 MAE (2024): {mae:.0f} passengers | RMSE: {rmse:.0f}"
+
+        # Retrain SARIMA model on full training data including validation period
+        model_final = SARIMAX(full_train['PASSENGERS'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+        model_fit_final = model_final.fit(disp=False)
+
+        # Forecast future period (2025)
+        forecast_2025 = model_fit_final.get_forecast(steps=periods)
+        forecast_df_2025 = pd.DataFrame({
+            'DATE': pd.date_range(start=pred_start, periods=periods, freq='MS'),
+            'VALUE': forecast_2025.predicted_mean,
+            'TYPE': 'Forecast 2025'
+        })
+
+    except Exception as e:
+        # Handle any errors during model fitting or forecasting
+        forecast_df_2024 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
+        forecast_df_2025 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
+        error_text = f"Error during model fitting or forecasting: {e}"
+
+    # Prepare actual training and validation data with unified format
+    real_train = train_initial.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Training data')
+    real_valid = valid_2024.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Actual 2024')
+
+    # Combine all data for plotting or further processing
+    combined_df = pd.concat([real_train, real_valid, forecast_df_2024, forecast_df_2025], ignore_index=True)
+
+    #return combined_df, error_text
+    return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
+
+
 

@@ -6,7 +6,7 @@ import json
 import plotly.graph_objects as go
 import plotly.express as px
 from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot  
-from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year
+from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast
 from preprocess import iata_to_name
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -70,12 +70,12 @@ app.layout = html.Div(
                             id='year-selector',
                             options=[
                                 {"label": "Years 2022-2024", "value": "all"},
-                               # {"label": "All years with forecast for 2025", "value": "all_2025"},
                                 {"label": "2022", "value": 2022},
                                 {"label": "2023", "value": 2023},
                                 {"label": "2024", "value": 2024},
                                 {"label": "Forecast 2024", "value": "forecast_2024"},
                                 {"label": "Forecast 2025", "value": "forecast_2025"},
+                                {"label": "All years", "value": "forecast_all"},
 
                             ],
                             value="all",
@@ -399,39 +399,84 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         lambda row: row['PASSENGERS'] / row['SEATS'] if row['SEATS'] > 0 else 0, axis=1)
 
     # If forecast selected, generate forecast data and plot
-    if isinstance(selected_year, str) and selected_year.startswith("forecast_"):
-        forecast_year = int(selected_year.split('_')[1])
+    if isinstance(selected_year, str) and (selected_year.startswith("forecast_") or selected_year == "forecast_all"):
+        if selected_year == "forecast_all":
+            forecast_years = [2024, 2025]
+        else:
+            forecast_years = [int(selected_year.split('_')[1])]
 
+        year_label = ', '.join(str(y) for y in forecast_years)
+        
+        # Holt Winter forecast:
         # Get forecast dataframe for the forecast_year
-        forecast_df = get_forecast_for_year(filtered, forecast_year)
+        
+        forecast_df = pd.concat([get_forecast_for_year(filtered, year) for year in forecast_years])
 
         # Filter actual data for forecast year (if available)
-        actual_df = filtered[filtered['YEAR'] == forecast_year]
+        actual_df = filtered.copy()
 
-        # Load Factor figure
+        # SARIMA forecast
+        train_df, valid_df, sarima_2024_df, sarima_2025_df, err = sarima_forecast(filtered)
+
+
+        # Filter SARIMA Forecast for forecast_year
+        
+        sarima_parts = []
+        if 2024 in forecast_years:
+            sarima_parts.append(sarima_2024_df[sarima_2024_df["TYPE"] == "Forecast 2024"])
+        if 2025 in forecast_years:
+            sarima_parts.append(sarima_2025_df[sarima_2025_df["TYPE"] == "Forecast 2025"])
+        sarima_forecast_df = pd.concat(sarima_parts, ignore_index=True)
+
+        
+        # Sort data before plotting
+        actual_df = actual_df.sort_values('DATE')
+        forecast_df = forecast_df.sort_values('DATE')
+        sarima_forecast_df = sarima_forecast_df.sort_values('DATE')
+
+        # Actual Load Factor figure - Blue
         lf_fig.add_trace(go.Scatter(
             x=actual_df['DATE'], y=actual_df['LOAD_FACTOR'],
-            mode='lines+markers', name=f'Actual {forecast_year}'
+            mode='lines+markers', name=f'Actual {year_label}', 
+            line=dict(color='#1f77b4')
         ))
+
+        # Holt-Winters Forecast Load Factor - Orange
         lf_fig.add_trace(go.Scatter(
             x=forecast_df['DATE'], y=forecast_df['FORECAST_LOAD_FACTOR'],
-            mode='lines+markers', name=f'Forecast {forecast_year}', line=dict(dash='dot')
+            mode='lines+markers', name=f'Holt-Winters Forecast {year_label}', 
+            line=dict(color='#ff7f0e', dash='dot')
         ))
 
-        # Passengers figure
+        # SARIMA Forecast Load Factor - Green
+        '''
+        lf_fig.add_trace(go.Scatter(
+            x=sarima_forecast_df['DATE'], y=sarima_forecast_df['LOAD_FACTOR'],  
+            mode='lines+markers', name=f'SARIMA Forecast Load Factor {forecast_year}',
+            line=dict(color='#2ca02c', dash='dashdot')
+        ))
+        '''
+        # Actual Passengers figure - Blue
         pax_fig.add_trace(go.Scatter(
             x=actual_df['DATE'], y=actual_df['PASSENGERS'],
-            mode='lines+markers', name=f'Actual Passengers {forecast_year}'
-        ))
-        pax_fig.add_trace(go.Scatter(
-            x=forecast_df['DATE'], y=forecast_df['FORECAST_PASSENGERS'],
-            mode='lines+markers', name=f'Forecast Passengers {forecast_year}', line=dict(dash='dot')
+            mode='lines+markers', name=f'Actual Passengers {year_label}',
+            line=dict(color='#1f77b4')
         ))
 
-        # For forecast, show no forecast plots for trend/seasonality/outliers
-        trend_fig = no_forecast_figure("No forecast for trend")
-        seasonality_fig = no_forecast_figure("No forecast for seasonality")
-        outliers_fig = no_forecast_figure("No forecast for outliers")
+        # Holt-Winters Passengers Forecast - Orange
+        pax_fig.add_trace(go.Scatter(
+            x=forecast_df['DATE'], y=forecast_df['FORECAST_PASSENGERS'],
+            mode='lines+markers', name=f'Holt-Winters Forecast Passengers {year_label}',
+            line=dict(color='#ff7f0e', dash='dot')
+        ))
+
+        # SARIMA Passengers Forecast - Green
+        pax_fig.add_trace(go.Scatter(
+            x=sarima_forecast_df['DATE'], y=sarima_forecast_df['VALUE'],
+            mode='lines+markers', name=f'SARIMA Forecast Passengers {year_label}',
+            line=dict(color='#2ca02c', dash='dashdot')
+        ))
+
 
     else:
         # For historical years or 'all', filter accordingly
@@ -479,7 +524,17 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
             plot_bgcolor='#222222',
             paper_bgcolor='#111111',
             font_color='white',
-            margin=dict(l=40, r=40, t=60, b=40)
+            margin=dict(l=40, r=40, t=60, b=40),
+            legend=dict(
+                x=0,
+                y=1,
+                xanchor='left',
+                yanchor='top',
+                #bgcolor='rgba(255,255,255,0.2)',  #semi-transparent legend
+                bgcolor='#111111',   # full-coverage legend
+                bordercolor='white',
+                borderwidth=1
+            )
         )
 
     lf_fig.update_layout(
