@@ -64,7 +64,7 @@ def preprocess():
         filtered = df[df["con_key"].isin(passed_keys)]
         
         # Group the filtered data by connection key and month, then aggregate the numeric values
-        grouped = filtered.groupby(["con_key", "MONTH"], as_index=False).agg({
+        grouped = filtered.groupby(["con_key", "YEAR", "MONTH"], as_index=False).agg({
             "PASSENGERS": "sum",
             "SEATS": "sum",
             "DEPARTURES_PERFORMED": "sum",

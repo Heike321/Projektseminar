@@ -393,6 +393,7 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
                                           filtered['MONTH'].astype(str).str.zfill(2) + '-01')
 
     # Calculate load factor safely
+    filtered = filtered.copy()
     filtered['LOAD_FACTOR'] = filtered.apply(
         lambda row: row['PASSENGERS'] / row['SEATS'] if row['SEATS'] > 0 else 0, axis=1)
 

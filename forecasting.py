@@ -16,6 +16,8 @@ def load_historical_data(file_path):
 def forecast_load_factor(df, periods=12):
     df = df.sort_values("DATE")
     df = df.set_index("DATE")
+    df.index.freq = 'MS'
+
     ts = df["LOAD_FACTOR"]
 
     model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=12)
@@ -35,6 +37,8 @@ def forecast_passengers(df, periods=12):
     # using Holt-Winters exponential smoothing.
     df = df.sort_values("DATE")
     df = df.set_index("DATE")
+    df.index.freq = 'MS'
+
     ts = df["PASSENGERS"]
 
     model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=12)
