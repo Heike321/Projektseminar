@@ -43,7 +43,7 @@ def get_trend_plot(df):
 
     ts = df['PASSENGERS']
 
-    # ❗ Check for minimum data length
+    # Check for minimum data length
     if len(ts) < 24:
         fig.add_annotation(
             x=0.5, y=0.5,
@@ -63,7 +63,11 @@ def get_trend_plot(df):
         return fig
 
     # Compute decomposition
-    decomposition = seasonal_decompose(ts, model="additive", period=12)
+    if (ts <= 0).any():
+        model_type = "additive"
+    else:
+        model_type = "multiplicative"
+    decomposition = seasonal_decompose(ts, model=model_type, period=12)
 
     fig.add_trace(go.Scatter(
         x=decomposition.trend.index,
@@ -89,15 +93,7 @@ def get_seasonality_plot(df):
     monthly = df.groupby(["YEAR", "MONTH"])["PASSENGERS"].sum().reset_index()
     fig = px.box(monthly, x="MONTH", y="PASSENGERS", title="Seasonal Pattern of Passengers by Month")
     return fig
-'''
-def get_outliers_plot(df):
-    monthly = df.groupby("DATE")["PASSENGERS"].sum().reset_index()
-    monthly["z_score"] = stats.zscore(monthly["PASSENGERS"].fillna(0))
-    outliers = monthly[np.abs(monthly["z_score"]) > 3]
-    fig = px.line(monthly, x="DATE", y="PASSENGERS", title="Outlier Detection in Monthly Passenger Data")
-    fig.add_scatter(x=outliers["DATE"], y=outliers["PASSENGERS"], mode="markers", marker=dict(color="red", size=8), name="Outliers")
-    return fig
-'''
+
 def get_outliers_plot(df):
     q1 = df["PASSENGERS"].quantile(0.25)
     q3 = df["PASSENGERS"].quantile(0.75)

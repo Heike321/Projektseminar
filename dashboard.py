@@ -15,6 +15,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Load and preprocess data
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
+#print(data[data["PASSENGERS"] == 0])
 
 
 with open("Data/valid_routes.json") as f:
