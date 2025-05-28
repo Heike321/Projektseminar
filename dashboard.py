@@ -432,9 +432,27 @@ def update_top_routes_visuals(selected_year, selected_month):
     )
     fig.update_layout(
         xaxis_tickangle=-45,
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(255,255,255,0.1)',   
+            gridwidth=1,
+            griddash='dash'  # 'dash', 'dot', 'dashdot', 'longdash'
+        ),
+        xaxis=dict(
+            showgrid=False  
+        ),
         plot_bgcolor='#222222',
         paper_bgcolor='#111111',
         font_color='white'
+    )
+    fig.update_traces(
+        marker=dict(
+            color=top_routes["PASSENGERS"],
+            colorscale="Blues",     
+            #line=dict(width=0)
+        ),
+        marker_line_width=0,
+        width=0.6
     )
 
     table = dash_table.DataTable(
