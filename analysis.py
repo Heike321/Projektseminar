@@ -79,7 +79,19 @@ def get_trend_plot(df):
     fig.update_layout(
         title="Passenger Trend",
         xaxis_title="Date",
+        xaxis=dict(
+            showgrid=False,          # no vertical lines
+            zeroline=False,
+            showline=True),
         yaxis_title="Passengers",
+        yaxis=dict(
+            showgrid=True,           # only horizontal lines
+            gridcolor='rgba(200, 200, 200, 0.3)',  # semi-transparent
+            gridwidth=1,
+            griddash='dot',          # dashed lines
+            zeroline=False,
+            showline=False
+        ),
         plot_bgcolor="#222222",
         paper_bgcolor="#111111",
         font_color="white"

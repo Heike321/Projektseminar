@@ -50,10 +50,10 @@ app.layout = html.Div(
             # LEFT SIDE: Graph and controls
             html.Div(style={'flex': 2, 'marginRight': '20px'}, children=[
 
-                # DROPDOWNS + KPIs nebeneinander
+                # DROPDOWNS + KPIs side by side
                 html.Div(style={'display': 'flex', 'marginBottom': '20px'}, children=[
 
-                    # DROPDOWNS (3/4 Breite)
+                    # DROPDOWNS (3/4 width)
                     html.Div(style={'flex': 3, 'marginRight': '10px'}, children=[
 
                         # Route dropdown (alone at top)
@@ -113,7 +113,6 @@ app.layout = html.Div(
                     ])   
                 ]),
                 
-                #], style={'display': 'flex', 'marginBottom': '20px'}),
                 # KPIs (RIGHT)
                 html.Div(id='kpi-container', style={
                         'flex': 1,
@@ -129,33 +128,80 @@ app.layout = html.Div(
                         'height': '120px',
                         'boxShadow': '0 2px 6px rgba(0,0,0,0.15)'
                 })
-        
-
             ]),
     
             # Graph
             dcc.Tabs(
                 [
-                    dcc.Tab(label='Trend', children=[
-                        dcc.Graph(id='trend-graph')
-                    ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
-        
-                    dcc.Tab(label='Seasonality', children=[
-                        dcc.Graph(id='seasonality-graph')
-                    ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
-        
-                    dcc.Tab(label='Outliers', children=[
-                        dcc.Graph(id='outliers-graph')
-                    ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+                    dcc.Tab(
+                        label='Trend',
+                        children=[dcc.Graph(id='trend-graph')],
+                        style={
+                            'color': 'white',
+                            'backgroundColor': '#222222',
+                            'borderRadius': '8px 8px 0 0',
+                            'padding': '10px',
+                            'marginRight': '5px',
+                            'transition': 'background-color 0.3s ease',
+                        },
+                        selected_style={
+                            'color': 'orange',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#333333',
+                            'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                        },
+                        className='custom-tab'
+                    ),
+                    dcc.Tab(
+                        label='Seasonality',
+                        children=[dcc.Graph(id='seasonality-graph')],
+                        style={
+                            'color': 'white',
+                            'backgroundColor': '#222222',
+                            'borderRadius': '8px 8px 0 0',
+                            'padding': '10px',
+                            'marginRight': '5px',
+                            'transition': 'background-color 0.3s ease',
+                        },
+                        selected_style={
+                            'color': 'orange',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#333333',
+                            'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                        },
+                        className='custom-tab'
+                    ),
+                    dcc.Tab(
+                        label='Outliers',
+                        children=[dcc.Graph(id='outliers-graph')],
+                        style={
+                            'color': 'white',
+                            'backgroundColor': '#222222',
+                            'borderRadius': '8px 8px 0 0',
+                            'padding': '10px',
+                            'transition': 'background-color 0.3s ease',
+                        },
+                        selected_style={
+                            'color': 'orange',
+                            'fontWeight': 'bold',
+                            'backgroundColor': '#333333',
+                            'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                        },
+                        className='custom-tab'
+                    ),
                 ],
-                style={'backgroundColor': '#111111'},  
+                style={
+                    'backgroundColor': '#111111',
+                    'borderBottom': '2px solid #444444',
+                    'paddingBottom': '5px',
+                },
                 colors={
-                    'border': 'white',
-                    'primary': 'orange',  
-                    'background': '#111111'  
+                    'border': '#444444',
+                    'primary': 'orange',
+                    'background': '#111111',
                 }
             ),
-
+            
                
             dcc.Graph(id='lf-graph'),
             dcc.Graph(id='passenger-graph')
@@ -589,13 +635,37 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
 
     lf_fig.update_layout(
         title=f"Load Factor for {origin} → {dest}",
+        xaxis=dict(
+            showgrid=False,          # no vertical lines
+            zeroline=False,
+            showline=True),
         xaxis_title='Date',
+        yaxis=dict(
+            showgrid=True,           # only horizontal lines
+            gridcolor='rgba(200, 200, 200, 0.3)',  # semi-transparent
+            gridwidth=1,
+            griddash='dot',          # dashed lines
+            zeroline=False,
+            showline=False
+        ),
         yaxis_title='Load Factor'
     )
     pax_fig.update_layout(
         title=f"Passenger Volume for {origin} → {dest}",
         xaxis_title='Date',
-        yaxis_title='Passengers'
+        xaxis=dict(
+            showgrid=False,          # no vertical lines
+            zeroline=False,
+            showline=True),
+        yaxis_title='Passengers',
+        yaxis=dict(
+            showgrid=True,           # only horizontal lines
+            gridcolor='rgba(200, 200, 200, 0.3)',  # semi-transparent
+            gridwidth=1,
+            griddash='dot',          # dashed lines
+            zeroline=False,
+            showline=False
+        ),
     )
 
     return trend_fig, seasonality_fig, outliers_fig, lf_fig, pax_fig
