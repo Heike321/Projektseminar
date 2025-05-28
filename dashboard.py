@@ -615,18 +615,27 @@ def update_kpis(route, airline, year):
     max_pax = df['PASSENGERS'].max()
     total_passengers = df['PASSENGERS'].sum()
 
-    def kpi_box(label, value):
+    def kpi_box(label, value, color):
         return html.Div([
             html.Small(label),
-            html.Div(f"{value}", style={'fontSize': '18px', 'fontWeight': 'bold'})
+            html.Div(f"{value}", style={'fontSize': '18px', 'fontWeight': 'bold','color': color})
         ], style={'marginBottom': '4px'})
+    color_lf = '#4CAF50' if avg_lf > 0.8 else '#FF5722'
+    color_max = '#2196F3' if max_pax > 10000 else '#aaaaaa'
+    color_total = '#FFC107'
 
+    return [
+        kpi_box("Ø Load Factor", f"{avg_lf:.2%}", color_lf),
+        kpi_box("Max Pax", f"{max_pax:,}", color_max),
+        kpi_box("Total Pax", f"{total_passengers:,}", color_total)
+    ]
+    '''
     return [
         kpi_box("Ø Load Factor", f"{avg_lf:.2%}"),
         kpi_box("Max Passengers", f"{max_pax:,}"),
         kpi_box("Total Passengers", f"{total_passengers:,}")
     ]
-
+    '''
 
 # Run app
 if __name__ == '__main__':
