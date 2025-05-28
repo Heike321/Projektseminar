@@ -33,7 +33,15 @@ app.title = "Flight Dashboard"
 
 # App layout 
 app.layout = html.Div(
-    style={'backgroundColor': '#111111', 'color': 'white', 'padding': '20px'},
+    #'backgroundColor': '#111111'black
+    style={
+    'backgroundImage': 'linear-gradient(to bottom right,#e0f7fa, #0288d1)',
+    'color': '#003344',
+    'padding': '20px',
+    'minHeight': '100vh',
+    'fontFamily': 'Segoe UI, Roboto, sans-serif',
+    },
+
     children=[
         html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
         
@@ -55,7 +63,15 @@ app.layout = html.Div(
                                 id='route-selector',
                                 options=route_options,
                                 placeholder="Choose a route",
-                                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                                style={
+                                    'width': '100%',
+                                    'backgroundColor': 'white',
+                                    'color': 'black',
+                                    'borderRadius': '8px',
+                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                    'padding': '5px'
+                                    }
+
                             )
                         ], style={'marginBottom': '10px'}),  
 
@@ -67,7 +83,9 @@ app.layout = html.Div(
                                     id='airline-selector',
                                     options=[{"label": "All Airlines", "value": "all"}],
                                     value="all",
-                                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                    'padding': '5px'}
                                 )
                             ], style={'flex': 1, 'marginRight': '10px'}),
 
@@ -87,7 +105,9 @@ app.layout = html.Div(
                                 ],
                                 value="all",
                                 clearable=False,
-                                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                    'padding': '5px'}
                             )
                         ], style={'flex': 1})
                     ])   
@@ -101,12 +121,16 @@ app.layout = html.Div(
                         'flexDirection': 'column',
                         'justifyContent': 'space-between',
                         'backgroundColor': '#222222',
-                        'padding': '10px',
-                        'borderRadius': '8px',
-                        'minWidth': '120px',
+                        'padding': '12px',
+                        'borderRadius': '10px',
+                        'border': '1.5px solid #888888',
+                        'minWidth': '140px',
                         'maxWidth': '160px',
-                        'height': '120px'
+                        'height': '120px',
+                        'boxShadow': '0 2px 6px rgba(0,0,0,0.15)'
                 })
+        
+
             ]),
     
             # Graph
@@ -139,15 +163,17 @@ app.layout = html.Div(
 
         # RIGHT SIDE: Top Routes Table
         html.Div(style={'flex': 1}, children=[
-            html.H2("Route Map", style={'textAlign': 'center'}),
-            html.Label("Select origin airport:"),
+            #html.H2("Route Map", style={'textAlign': 'center'}),
+            #html.Label("Select origin airport:"),
             dcc.Dropdown(
                 id="origin-dropdown",
                 options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
                 # options=[{"label": f"{name} ({iata})", "value": iata} for iata, name in iata_to_name.items()],
                 placeholder="Select origin airport",
                 clearable=True,
-                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                    'padding': '5px'}
                     
             ),
             dcc.Graph(id='route-map'),
@@ -163,7 +189,9 @@ app.layout = html.Div(
                     {"label": "2024", "value": 2024}
                 ],
                 value="all",
-                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
+                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                    'padding': '5px'},
                 clearable=False,
                     
             ),
@@ -173,7 +201,9 @@ app.layout = html.Div(
                 options=[{"label": "All month", "value": "all"}]+
                     [{"label": str(m), "value": m} for m in range(1, 13)],
                 value=1,
-                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
+                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                    'padding': '5px'},
                 clearable=False
             ),
 
@@ -617,9 +647,11 @@ def update_kpis(route, airline, year):
 
     def kpi_box(label, value, color):
         return html.Div([
-            html.Small(label),
+            html.Small(label, style={'color': 'white'}),
             html.Div(f"{value}", style={'fontSize': '18px', 'fontWeight': 'bold','color': color})
         ], style={'marginBottom': '4px'})
+        
+
     color_lf = '#4CAF50' if avg_lf > 0.8 else '#FF5722'
     color_max = '#2196F3' if max_pax > 10000 else '#aaaaaa'
     color_total = '#FFC107'
