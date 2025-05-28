@@ -151,7 +151,7 @@ app.layout = html.Div(
                     
             ),
             dcc.Graph(id='route-map'),
-            html.H3("Top 10 Routes", style={'textAlign': 'center'}),
+            html.H3("Top 3 Routes", style={'textAlign': 'center'}),
 
             html.Label("Select year:"),
             dcc.Dropdown(
@@ -165,7 +165,7 @@ app.layout = html.Div(
                 value="all",
                 style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
                 clearable=False,
-                    #style={'backgroundColor': 'white', 'color': 'black'}
+                    
             ),
             html.Label("Select month:"),
             dcc.Dropdown(
@@ -345,13 +345,13 @@ def update_top_routes_visuals(selected_year, selected_month):
         "SEATS": "sum"
     })
     top_routes["LOAD_FACTOR"] = top_routes["PASSENGERS"] / top_routes["SEATS"]
-    top_routes = top_routes.sort_values("PASSENGERS", ascending=False).head(10)
+    top_routes = top_routes.sort_values("PASSENGERS", ascending=False).head(3)
 
     fig = px.bar(
         top_routes,
         x="ROUTE",
         y="PASSENGERS",
-        title="Top 10 Routes by Passengers",
+        #title="Top 3 Routes",
         labels={"PASSENGERS": "Number of Passengers"},
     )
     fig.update_layout(
@@ -629,13 +629,7 @@ def update_kpis(route, airline, year):
         kpi_box("Max Pax", f"{max_pax:,}", color_max),
         kpi_box("Total Pax", f"{total_passengers:,}", color_total)
     ]
-    '''
-    return [
-        kpi_box("Ø Load Factor", f"{avg_lf:.2%}"),
-        kpi_box("Max Passengers", f"{max_pax:,}"),
-        kpi_box("Total Passengers", f"{total_passengers:,}")
-    ]
-    '''
+    
 
 # Run app
 if __name__ == '__main__':
