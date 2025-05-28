@@ -37,134 +37,154 @@ app.layout = html.Div(
     children=[
         html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
         
+        #Dropdowns + KPIs 
         html.Div(style={'display': 'flex'}, children=[
             # LEFT SIDE: Graph and controls
-            html.Div(style={'flex': 2, 'marginRight': '40px'}, children=[
+            html.Div(style={'flex': 2, 'marginRight': '20px'}, children=[
 
-                # Route dropdown (alone at top)
-                html.Div([
-                    html.Label("Select a route:"),
-                    dcc.Dropdown(
-                        id='route-selector',
-                        options=route_options,
-                        placeholder="Choose a route",
-                        style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
-                    )
-                ], style={'marginBottom': '20px'}),  
+                # DROPDOWNS + KPIs nebeneinander
+                html.Div(style={'display': 'flex', 'marginBottom': '20px'}, children=[
 
-                # Airline and Year dropdowns
-                html.Div([
-                    html.Div([
-                        html.Label("Select airline:"),
-                        dcc.Dropdown(
-                            id='airline-selector',
-                            options=[{"label": "All Airlines", "value": "all"}],
-                            value="all",
-                            style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
-                        )
-                    ], style={'flex': 1, 'marginRight': '10px'}),
+                    # DROPDOWNS (3/4 Breite)
+                    html.Div(style={'flex': 3, 'marginRight': '10px'}, children=[
 
-                    html.Div([
-                        html.Label("Select year:"),
-                        dcc.Dropdown(
-                            id='year-selector',
-                            options=[
-                                {"label": "Years 2022-2024", "value": "all"},
-                                {"label": "2022", "value": 2022},
-                                {"label": "2023", "value": 2023},
-                                {"label": "2024", "value": 2024},
-                                {"label": "Forecast 2024", "value": "forecast_2024"},
-                                {"label": "Forecast 2025", "value": "forecast_2025"},
-                                {"label": "All years", "value": "forecast_all"},
+                        # Route dropdown (alone at top)
+                        html.Div([
+                            html.Label("Select a route:"),
+                            dcc.Dropdown(
+                                id='route-selector',
+                                options=route_options,
+                                placeholder="Choose a route",
+                                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                            )
+                        ], style={'marginBottom': '10px'}),  
 
-                            ],
-                            value="all",
-                            clearable=False,
-                            style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
-                        )
-                    ], style={'flex': 1})
-                ], style={'display': 'flex', 'marginBottom': '20px'}),
+                        # Airline and Year dropdowns
+                        html.Div(style={'display': 'flex'}, children=[
+                            html.Div([
+                                html.Label("Select airline:"),
+                                dcc.Dropdown(
+                                    id='airline-selector',
+                                    options=[{"label": "All Airlines", "value": "all"}],
+                                    value="all",
+                                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                                )
+                            ], style={'flex': 1, 'marginRight': '10px'}),
 
-                # Graph
-                dcc.Tabs(
-                    [
-                        dcc.Tab(label='Trend', children=[
-                            dcc.Graph(id='trend-graph')
-                        ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+                            html.Div([
+                            html.Label("Select year:"),
+                            dcc.Dropdown(
+                                id='year-selector',
+                                options=[
+                                    {"label": "Years 2022-2024", "value": "all"},
+                                    {"label": "2022", "value": 2022},
+                                    {"label": "2023", "value": 2023},
+                                    {"label": "2024", "value": 2024},
+                                    {"label": "Forecast 2024", "value": "forecast_2024"},
+                                    {"label": "Forecast 2025", "value": "forecast_2025"},
+                                    {"label": "All years", "value": "forecast_all"},
+
+                                ],
+                                value="all",
+                                clearable=False,
+                                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+                            )
+                        ], style={'flex': 1})
+                    ])   
+                ]),
+                
+                #], style={'display': 'flex', 'marginBottom': '20px'}),
+                # KPIs (RIGHT)
+                html.Div(id='kpi-container', style={
+                        'flex': 1,
+                        'display': 'flex',
+                        'flexDirection': 'column',
+                        'justifyContent': 'space-between',
+                        'backgroundColor': '#222222',
+                        'padding': '10px',
+                        'borderRadius': '8px',
+                        'minWidth': '120px',
+                        'maxWidth': '160px',
+                        'height': '120px'
+                })
+            ]),
+    
+            # Graph
+            dcc.Tabs(
+                [
+                    dcc.Tab(label='Trend', children=[
+                        dcc.Graph(id='trend-graph')
+                    ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
         
-                        dcc.Tab(label='Seasonality', children=[
-                            dcc.Graph(id='seasonality-graph')
-                        ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+                    dcc.Tab(label='Seasonality', children=[
+                        dcc.Graph(id='seasonality-graph')
+                    ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
         
-                        dcc.Tab(label='Outliers', children=[
-                            dcc.Graph(id='outliers-graph')
-                        ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
-                    ],
-                    style={'backgroundColor': '#111111'},  
-                    colors={
-                        'border': 'white',
-                        'primary': 'orange',  
-                        'background': '#111111'  
-                    }
-                ),
+                    dcc.Tab(label='Outliers', children=[
+                        dcc.Graph(id='outliers-graph')
+                    ], style={'color': 'white'}, selected_style={'color': 'orange', 'fontWeight': 'bold'}),
+                ],
+                style={'backgroundColor': '#111111'},  
+                colors={
+                    'border': 'white',
+                    'primary': 'orange',  
+                    'background': '#111111'  
+                }
+            ),
 
                
-                dcc.Graph(id='lf-graph'),
-                dcc.Graph(id='passenger-graph')
-            ]),
+            dcc.Graph(id='lf-graph'),
+            dcc.Graph(id='passenger-graph')
+        ]),
 
-            # RIGHT SIDE: Top Routes Table
-            
-   
-
-
-
-            html.Div(style={'flex': 1}, children=[
-                html.H2("Route Map", style={'textAlign': 'center'}),
-                html.Label("Select origin airport:"),
-                dcc.Dropdown(
-                    id="origin-dropdown",
-                    options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
-                   # options=[{"label": f"{name} ({iata})", "value": iata} for iata, name in iata_to_name.items()],
-                    placeholder="Select origin airport",
-                    clearable=True,
-                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
+        # RIGHT SIDE: Top Routes Table
+        html.Div(style={'flex': 1}, children=[
+            html.H2("Route Map", style={'textAlign': 'center'}),
+            html.Label("Select origin airport:"),
+            dcc.Dropdown(
+                id="origin-dropdown",
+                options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
+                # options=[{"label": f"{name} ({iata})", "value": iata} for iata, name in iata_to_name.items()],
+                placeholder="Select origin airport",
+                clearable=True,
+                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'}
                     
-                ),
-                dcc.Graph(id='route-map'),
-                html.H3("Top 10 Routes", style={'textAlign': 'center'}),
+            ),
+            dcc.Graph(id='route-map'),
+            html.H3("Top 10 Routes", style={'textAlign': 'center'}),
 
-                html.Label("Select year:"),
-                dcc.Dropdown(
-                    id='top-routes-year-selector',
-                    options=[
-                        {"label": "All years", "value": "all"},
-                        {"label": "2022", "value": 2022},
-                        {"label": "2023", "value": 2023},
-                        {"label": "2024", "value": 2024}
-                    ],
-                    value="all",
-                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
-                    clearable=False,
+            html.Label("Select year:"),
+            dcc.Dropdown(
+                id='top-routes-year-selector',
+                options=[
+                    {"label": "All years", "value": "all"},
+                    {"label": "2022", "value": 2022},
+                    {"label": "2023", "value": 2023},
+                    {"label": "2024", "value": 2024}
+                ],
+                value="all",
+                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
+                clearable=False,
                     #style={'backgroundColor': 'white', 'color': 'black'}
-                ),
-                html.Label("Select month:"),
-                dcc.Dropdown(
-                    id='top-routes-month-selector',
-                    options=[{"label": "All month", "value": "all"}]+
-                        [{"label": str(m), "value": m} for m in range(1, 13)],
-                    value=1,
-                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
-                    clearable=False
-                ),
+            ),
+            html.Label("Select month:"),
+            dcc.Dropdown(
+                id='top-routes-month-selector',
+                options=[{"label": "All month", "value": "all"}]+
+                    [{"label": str(m), "value": m} for m in range(1, 13)],
+                value=1,
+                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black'},
+                clearable=False
+            ),
 
 
-                html.Br(),
-                dcc.Graph(id='top-routes-bar'),
-                html.Div(id='top-routes-table')
-            ])
+            html.Br(),
+            dcc.Graph(id='top-routes-bar'),
+            html.Div(id='top-routes-table')
         ])
     ])
+]
+)
 
 @app.callback(
     Output("route-map", "figure"),
@@ -369,9 +389,9 @@ def update_top_routes_visuals(selected_year, selected_month):
 )
 def update_all_graphs(selected_route, selected_airline, selected_year):
     # Initial empty figures
-    trend_fig = no_forecast_figure("You have to choose a route!")
-    seasonality_fig = no_forecast_figure("You have to choose a route!")
-    outliers_fig = no_forecast_figure("You have to choose a route!")
+    trend_fig = no_forecast_figure("No forecast available!")
+    seasonality_fig = no_forecast_figure("No forecast available!")
+    outliers_fig = no_forecast_figure("No forecast available!")
     lf_fig = go.Figure()
     pax_fig = go.Figure()
 
@@ -569,6 +589,44 @@ def no_forecast_figure(message="No forecast available"):
         margin=dict(l=20, r=20, t=40, b=20)
     )
     return fig
+
+@app.callback(
+    Output('kpi-container', 'children'),
+    Input('route-selector', 'value'),
+    Input('airline-selector', 'value'),
+    Input('year-selector', 'value')
+)
+def update_kpis(route, airline, year):
+    if not route:
+        return []
+
+    origin, dest = route.split('-')
+    df = data[(data['ORIGIN'] == origin) & (data['DEST'] == dest)].copy()
+
+    if airline != "all":
+        df = df[df['UNIQUE_CARRIER_NAME'] == airline]
+
+    if year != "all" and isinstance(year, int):
+        df = df[df['YEAR'] == year]
+
+    df['LOAD_FACTOR'] = df.apply(lambda row: row['PASSENGERS'] / row['SEATS'] if row['SEATS'] > 0 else 0, axis=1)
+
+    avg_lf = df['LOAD_FACTOR'].mean()
+    max_pax = df['PASSENGERS'].max()
+    total_passengers = df['PASSENGERS'].sum()
+
+    def kpi_box(label, value):
+        return html.Div([
+            html.Small(label),
+            html.Div(f"{value}", style={'fontSize': '18px', 'fontWeight': 'bold'})
+        ], style={'marginBottom': '4px'})
+
+    return [
+        kpi_box("Ø Load Factor", f"{avg_lf:.2%}"),
+        kpi_box("Max Passengers", f"{max_pax:,}"),
+        kpi_box("Total Passengers", f"{total_passengers:,}")
+    ]
+
 
 # Run app
 if __name__ == '__main__':
