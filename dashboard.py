@@ -495,16 +495,7 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
     
     origin, dest = selected_route.split('-')
     filtered = prepare_forecast_data(data, f"{origin} → {dest}", selected_airline)
-    '''
-    origin, dest = selected_route.split('-')
-
-    # Filter by route
-    filtered = data[(data['ORIGIN'] == origin) & (data['DEST'] == dest)]
-
-    # Filter by airline if not 'all'
-    if selected_airline and selected_airline != 'all':
-        filtered = filtered[filtered['UNIQUE_CARRIER_NAME'] == selected_airline]
-    '''
+    
     # Add DATE column if not present
     if 'DATE' not in filtered.columns:
         filtered['DATE'] = pd.to_datetime(filtered['YEAR'].astype(str) + '-' + 
