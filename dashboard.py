@@ -6,7 +6,7 @@ import json
 import plotly.graph_objects as go
 import plotly.express as px
 from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot  
-from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast
+from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data
 from preprocess import iata_to_name
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -15,7 +15,7 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 # Load and preprocess data
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
-#print(data[data["PASSENGERS"] == 0])
+
 
 
 with open("Data/valid_routes.json") as f:
@@ -428,7 +428,7 @@ def update_top_routes_visuals(selected_year, selected_month):
         x="ROUTE",
         y="PASSENGERS",
         #title="Top 3 Routes",
-        labels={"PASSENGERS": "Number of Passengers"},
+        labels={"PASSENGERS": "Number of Passengers", "ROUTE": "Flight route"},
     )
     fig.update_layout(
         xaxis_tickangle=-45,
@@ -492,7 +492,10 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
     # Return early if no route selected
     if not selected_route:
         return trend_fig, seasonality_fig, outliers_fig, lf_fig, pax_fig
-
+    
+    origin, dest = selected_route.split('-')
+    filtered = prepare_forecast_data(data, f"{origin} → {dest}", selected_airline)
+    '''
     origin, dest = selected_route.split('-')
 
     # Filter by route
@@ -501,7 +504,7 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
     # Filter by airline if not 'all'
     if selected_airline and selected_airline != 'all':
         filtered = filtered[filtered['UNIQUE_CARRIER_NAME'] == selected_airline]
-
+    '''
     # Add DATE column if not present
     if 'DATE' not in filtered.columns:
         filtered['DATE'] = pd.to_datetime(filtered['YEAR'].astype(str) + '-' + 
@@ -520,6 +523,7 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
             forecast_years = [int(selected_year.split('_')[1])]
 
         year_label = ', '.join(str(y) for y in forecast_years)
+        
         
         # Holt Winter forecast:
         # Get forecast dataframe for the forecast_year
@@ -746,8 +750,8 @@ def update_kpis(route, airline, year):
 
     return [
         kpi_box("Ø Load Factor", f"{avg_lf:.2%}", color_lf),
-        kpi_box("Max Pax", f"{max_pax:,}", color_max),
-        kpi_box("Total Pax", f"{total_passengers:,}", color_total)
+        kpi_box("Max Passengers", f"{max_pax:,}", color_max),
+        kpi_box("Total Passengers", f"{total_passengers:,}", color_total)
     ]
     
 

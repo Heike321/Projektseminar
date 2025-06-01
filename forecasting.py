@@ -19,6 +19,37 @@ def load_historical_data(file_path):
 
     return historical
 
+
+
+def prepare_forecast_data(data, selected_route, selected_airline):
+    df = data.copy()
+    df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
+    df = df[df["ROUTE"] == selected_route]
+
+    # If no airline selected, or "all"
+    if not selected_airline or selected_airline.lower() == "all":
+        # Aggregate all airlines on a monthly basis
+        df = (
+            df.groupby("DATE", as_index=False)
+            .agg({"PASSENGERS": "sum", "SEATS": "sum"})
+        )
+        df["LOAD_FACTOR"] = df["PASSENGERS"] / df["SEATS"]
+        df["YEAR"] = df["DATE"].dt.year
+        df["MONTH"] = df["DATE"].dt.month
+
+        return df
+    
+    # If an airline is explicitly selected
+    df = df[df["UNIQUE_CARRIER_NAME"] == selected_airline]
+
+    if df.empty:
+        raise ValueError(f"No data for airline '{selected_airline}' on this route.")
+
+    df["LOAD_FACTOR"] = df["PASSENGERS"] / df["SEATS"]
+    return df
+
+
+
 def forecast_load_factor(df, periods=12):
     df = df.sort_values("DATE")
     df = df.set_index("DATE")
