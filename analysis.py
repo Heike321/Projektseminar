@@ -4,8 +4,14 @@ import numpy as np
 from statsmodels.tsa.seasonal import seasonal_decompose
 import plotly.graph_objects as go
 from scipy import stats
+from statsmodels.tsa.seasonal import STL
+from sklearn.metrics import mean_absolute_error
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_absolute_error
 
-df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
+ 
+
 airports_df = pd.read_csv("airports.dat")  
 
 
@@ -122,3 +128,97 @@ def get_outliers_plot(df):
     fig.update_layout(title="Outliers in Passengers", xaxis_title="Date", yaxis_title="Passengers")
     return fig
    
+def generate_route_insights(df):
+    
+
+    insights = []
+
+    df["DATE"] = pd.to_datetime(df["DATE"])
+    df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
+
+    all_routes = df["ROUTE"].unique()
+
+    for route in all_routes:
+        route_df = df[df["ROUTE"] == route].sort_values("DATE")
+
+        # Skip routes with missing values or too little data
+        if route_df["PASSENGERS"].isnull().any() or len(route_df) < 36:
+            continue
+
+        y = route_df["PASSENGERS"].values
+        x = np.arange(len(y))
+
+        # Linear trend estimation
+        slope, *_ = np.polyfit(x, y, 1)
+
+        # STL decomposition for seasonality and outliers
+        ts = route_df.set_index("DATE")["PASSENGERS"]
+        stl = STL(ts, period=12)
+        res = stl.fit()
+
+        season_amp = res.seasonal.max() - res.seasonal.min()
+
+        # IQR method to detect outliers in residuals
+        resid = res.resid
+        q1, q3 = np.percentile(resid, [25, 75])
+        iqr = q3 - q1
+        outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
+        
+        # Forecast Error: Holt-Winters (2024) 
+        try:
+            train_hw = route_df[route_df["DATE"].dt.year < 2024]
+            valid_hw = route_df[route_df["DATE"].dt.year == 2024]
+            ts_hw = train_hw.set_index("DATE")["PASSENGERS"]
+            ts_hw.index.freq = 'MS'
+
+            model_hw = ExponentialSmoothing(ts_hw, trend='add', seasonal='add', seasonal_periods=12)
+            fit_hw = model_hw.fit()
+            forecast_hw = fit_hw.forecast(12)
+
+            mae_hw = mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw)
+        except:
+            mae_hw = np.nan
+
+        # Forecast Error: SARIMA (2024)
+        try:
+            train_sarima = route_df[route_df["DATE"] < "2024-01-01"]
+            valid_sarima = route_df[(route_df["DATE"] >= "2024-01-01") & (route_df["DATE"] < "2025-01-01")]
+            ts_sarima = train_sarima.set_index("DATE")["PASSENGERS"]
+            ts_sarima.index.freq = 'MS'
+
+            model_sarima = SARIMAX(ts_sarima, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+            fit_sarima = model_sarima.fit(disp=False)
+            forecast_sarima = fit_sarima.get_forecast(steps=12).predicted_mean
+
+            mae_sarima = mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima)
+        except:
+            mae_sarima = np.nan
+
+        # Collect results
+        insights.append({
+            "route": route,
+            "trend_slope": round(slope, 2),
+            "season_amp": round(season_amp, 1),
+            "outlier_count": int(outliers),
+            "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else "-",
+            "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else "-",
+            "quotient_holt": round(mae_hw / slope, 3) if (not np.isnan(mae_hw) and slope != 0) else np.nan,
+            "quotient_sarima": round(mae_sarima / slope, 3) if (not np.isnan(mae_sarima) and slope != 0) else np.nan
+        })
+
+    df_result = pd.DataFrame(insights)
+    df_result = df_result.sort_values("trend_slope", ascending=False).reset_index(drop=True)
+    
+    # Save the insights to CSV for dashboard use
+    df_result.to_csv("Data/precomputed_route_insights.csv", index=False)
+    
+    return df_result
+
+if __name__ == "__main__":
+    
+    df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
+    df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")
+    df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
+    
+    generate_route_insights(df)
+

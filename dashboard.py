@@ -5,7 +5,7 @@ from scipy import stats
 import json
 import plotly.graph_objects as go
 import plotly.express as px
-from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot  
+from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot , generate_route_insights
 from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data
 from preprocess import iata_to_name
 import warnings
@@ -16,16 +16,28 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
 
-
-
 with open("Data/valid_routes.json") as f:
     route_options = json.load(f)
 
+#Es gibt Flugverbindungen in denen Sitze und Passagiere Null sind
+'''
+def check_zero_stats(df):
+    print("Total rows:", len(df))
+    print("SEATS == 0:", (df["SEATS"] == 0).sum())
+    print("PASSENGERS == 0:", (df["PASSENGERS"] == 0).sum())
+    print("SEATS & PASSENGERS == 0:", ((df["SEATS"] == 0) & (df["PASSENGERS"] == 0)).sum())
+check_zero_stats(data)
+'''
+data = data[(data["SEATS"] > 0) & (data["PASSENGERS"] > 0)]
 
 
+# Load precomputed route insights and select the top 10 routes with the highest increasing trend
+route_insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
+top_routes_df = route_insights_df.sort_values("trend_slope", ascending=False).head(10)
+
+
+# Get all unique origin IATA codes used in the dataset
 iata_codes = data["ORIGIN"].dropna().unique()
-
-
 
 # Initialize Dash app 
 app = dash.Dash(__name__)
@@ -127,140 +139,208 @@ app.layout = html.Div(
                         'maxWidth': '160px',
                         'height': '120px',
                         'boxShadow': '0 2px 6px rgba(0,0,0,0.15)'
-                })
-            ]),
-    
-            # Graph
-            dcc.Tabs(
-                [
-                    dcc.Tab(
-                        label='Trend',
-                        children=[dcc.Graph(id='trend-graph')],
-                        style={
-                            'color': 'white',
-                            'backgroundColor': '#222222',
-                            'borderRadius': '8px 8px 0 0',
-                            'padding': '10px',
-                            'marginRight': '5px',
-                            'transition': 'background-color 0.3s ease',
-                        },
-                        selected_style={
-                            'color': 'orange',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#333333',
-                            'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
-                        },
-                        className='custom-tab'
-                    ),
-                    dcc.Tab(
-                        label='Seasonality',
-                        children=[dcc.Graph(id='seasonality-graph')],
-                        style={
-                            'color': 'white',
-                            'backgroundColor': '#222222',
-                            'borderRadius': '8px 8px 0 0',
-                            'padding': '10px',
-                            'marginRight': '5px',
-                            'transition': 'background-color 0.3s ease',
-                        },
-                        selected_style={
-                            'color': 'orange',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#333333',
-                            'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
-                        },
-                        className='custom-tab'
-                    ),
-                    dcc.Tab(
-                        label='Outliers',
-                        children=[dcc.Graph(id='outliers-graph')],
-                        style={
-                            'color': 'white',
-                            'backgroundColor': '#222222',
-                            'borderRadius': '8px 8px 0 0',
-                            'padding': '10px',
-                            'transition': 'background-color 0.3s ease',
-                        },
-                        selected_style={
-                            'color': 'orange',
-                            'fontWeight': 'bold',
-                            'backgroundColor': '#333333',
-                            'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
-                        },
-                        className='custom-tab'
-                    ),
-                ],
-                style={
-                    'backgroundColor': '#111111',
-                    'borderBottom': '2px solid #444444',
-                    'paddingBottom': '5px',
-                },
-                colors={
-                    'border': '#444444',
-                    'primary': 'orange',
-                    'background': '#111111',
-                }
-            ),
+                    }),
+                ]),
             
-               
-            dcc.Graph(id='lf-graph'),
-            dcc.Graph(id='passenger-graph')
-        ]),
+                # Graph
+                dcc.Tabs(
+                    [
+                        dcc.Tab(
+                            label='Trend',
+                            children=[dcc.Graph(id='trend-graph')],
+                            style={
+                                'color': 'white',
+                                'backgroundColor': '#222222',
+                                'borderRadius': '8px 8px 0 0',
+                                'padding': '10px',
+                                'marginRight': '5px',
+                                'transition': 'background-color 0.3s ease',
+                            },
+                            selected_style={
+                                'color': 'orange',
+                                'fontWeight': 'bold',
+                                'backgroundColor': '#333333',
+                                'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                            },
+                            className='custom-tab'
+                        ),
+                        dcc.Tab(
+                            label='Seasonality',
+                            children=[dcc.Graph(id='seasonality-graph')],
+                            style={
+                                'color': 'white',
+                                'backgroundColor': '#222222',
+                                'borderRadius': '8px 8px 0 0',
+                                'padding': '10px',
+                                'marginRight': '5px',
+                                'transition': 'background-color 0.3s ease',
+                            },
+                            selected_style={
+                                'color': 'orange',
+                                'fontWeight': 'bold',
+                                'backgroundColor': '#333333',
+                                'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                            },
+                            className='custom-tab'
+                        ),
+                        dcc.Tab(
+                            label='Outliers',
+                            children=[dcc.Graph(id='outliers-graph')],
+                            style={
+                                'color': 'white',
+                                'backgroundColor': '#222222',
+                                'borderRadius': '8px 8px 0 0',
+                                'padding': '10px',
+                                'transition': 'background-color 0.3s ease',
+                            },
+                            selected_style={
+                                'color': 'orange',
+                                'fontWeight': 'bold',
+                                'backgroundColor': '#333333',
+                                'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                            },
+                            className='custom-tab'
+                        ),
+                        dcc.Tab(
+                            label='Recommendation',
+                            children=[
+                                html.H4("Top Routes by Highest Increasing Trend"),
+                                html.Div([
+                                    html.Button("Recommend by Holt-Winters", 
+                                        id="hw-button", 
+                                        n_clicks=0,
+                                        style={
+                                            'backgroundColor': '#ff7f0e',
+                                            'color': 'white',
+                                            'border': 'none',
+                                            'padding': '10px 20px',
+                                            'margin': '0 10px',
+                                            'borderRadius': '5px',
+                                            'cursor': 'pointer'
+                                        }),
+                                    html.Button("Recommend by SARIMA", 
+                                        id="sarima-button", 
+                                        n_clicks=0,
+                                        style={
+                                            'backgroundColor': '#2ca02c',
+                                            'color': 'white',
+                                            'border': 'none',
+                                            'padding': '10px 20px',
+                                            'margin': '0 10px',
+                                            'borderRadius': '5px',
+                                            'cursor': 'pointer'
+                                        }),
+                                ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px'}),
+                                dash_table.DataTable(
+                                    id='analysis-table',
+                                    columns=[
+                                        {"name": "Route", "id": "route"},
+                                        {"name": "Trend ↑", "id": "trend_slope"},
+                                        {"name": "Season Amp.", "id": "season_amp"},
+                                        {"name": "Outliers", "id": "outlier_count"},
+                                        {"name": "MAE Holt-Winters", "id": "mae_holt"},
+                                        {"name": "MAE/Trend(HW)", "id": "quotient_holt"},
+                                        {"name": "MAE SARIMA", "id": "mae_sarima"},
+                                        {"name": "MAE/Trend(S)", "id": "quotient_sarima"}
+                                    ],
+                                    data=top_routes_df.to_dict("records"),
+                                    style_table={'overflowX': 'auto'},
+                                    style_cell={'textAlign': 'center'},
+                                    style_header={'backgroundColor': '#eeeeee', 'fontWeight': 'bold'},
+                                    page_size=5
+                                )
+                            ],
+                            style={
+                                'color': 'white',
+                                'backgroundColor': '#222222',
+                                'borderRadius': '8px 8px 0 0',
+                                'padding': '10px',
+                                'marginRight': '5px',
+                                'transition': 'background-color 0.3s ease',
+                            },
+                            selected_style={
+                                'color': 'orange',
+                                'fontWeight': 'bold',
+                                'backgroundColor': '#333333',
+                                'boxShadow': '0 4px 10px rgba(255, 165, 0, 0.5)',
+                            },
 
-        # RIGHT SIDE: Top Routes Table
-        html.Div(style={'flex': 1}, children=[
-            #html.H2("Route Map", style={'textAlign': 'center'}),
-            #html.Label("Select origin airport:"),
-            dcc.Dropdown(
-                id="origin-dropdown",
-                options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
-                # options=[{"label": f"{name} ({iata})", "value": iata} for iata, name in iata_to_name.items()],
-                placeholder="Select origin airport",
-                clearable=True,
-                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
-                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
-                                    'padding': '5px'}
-                    
-            ),
-            dcc.Graph(id='route-map'),
-            html.H3("Top 3 Routes", style={'textAlign': 'center'}),
+                            className='custom-tab'
+                        )
+                    ],
+                    style={
+                        'backgroundColor': '#111111',
+                        'borderBottom': '2px solid #444444',
+                        'paddingBottom': '5px',
+                    },
+                    colors={
+                        'border': '#444444',
+                        'primary': 'orange',
+                        'background': '#111111',
+                    }
+                ),
+            
+            
+                dcc.Graph(id='lf-graph'),
+                dcc.Graph(id='passenger-graph')
+            ]),
+                
+                
+        #]),
 
-            html.Label("Select year:"),
-            dcc.Dropdown(
-                id='top-routes-year-selector',
-                options=[
-                    {"label": "All years", "value": "all"},
-                    {"label": "2022", "value": 2022},
-                    {"label": "2023", "value": 2023},
-                    {"label": "2024", "value": 2024}
-                ],
-                value="all",
-                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
-                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
-                                    'padding': '5px'},
-                clearable=False,
-                    
-            ),
-            html.Label("Select month:"),
-            dcc.Dropdown(
-                id='top-routes-month-selector',
-                options=[{"label": "All month", "value": "all"}]+
-                    [{"label": str(m), "value": m} for m in range(1, 13)],
-                value=1,
-                style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
-                                    'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
-                                    'padding': '5px'},
-                clearable=False
-            ),
+            # RIGHT SIDE: Top Routes Table
+            html.Div(style={'flex': 1}, children=[
+                #html.H2("Route Map", style={'textAlign': 'center'}),
+                #html.Label("Select origin airport:"),
+                dcc.Dropdown(
+                    id="origin-dropdown",
+                    options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
+                    placeholder="Select origin airport",
+                    clearable=True,
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                        'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                        'padding': '5px'}
+                        
+                ),
+                dcc.Graph(id='route-map'),
+                html.H3("Top 3 Routes", style={'textAlign': 'center'}),
+
+                html.Label("Select year:"),
+                dcc.Dropdown(
+                    id='top-routes-year-selector',
+                    options=[
+                        {"label": "All years", "value": "all"},
+                        {"label": "2022", "value": 2022},
+                        {"label": "2023", "value": 2023},
+                        {"label": "2024", "value": 2024}
+                    ],
+                    value="all",
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                        'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                        'padding': '5px'},
+                    clearable=False,
+                        
+                ),
+                html.Label("Select month:"),
+                dcc.Dropdown(
+                    id='top-routes-month-selector',
+                    options=[{"label": "All month", "value": "all"}]+
+                        [{"label": str(m), "value": m} for m in range(1, 13)],
+                    value=1,
+                    style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
+                                        'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
+                                        'padding': '5px'},
+                    clearable=False
+                ),
 
 
-            html.Br(),
-            dcc.Graph(id='top-routes-bar'),
-            html.Div(id='top-routes-table')
+                html.Br(),
+                dcc.Graph(id='top-routes-bar'),
+                html.Div(id='top-routes-table')
+            ])
         ])
-    ])
-]
-)
+    ]
+)            
 
 @app.callback(
     Output("route-map", "figure"),
@@ -744,7 +824,30 @@ def update_kpis(route, airline, year):
         kpi_box("Max Passengers", f"{max_pax:,}", color_max),
         kpi_box("Total Passengers", f"{total_passengers:,}", color_total)
     ]
-    
+
+
+@app.callback(
+    Output("analysis-table", "data"),
+    Input("hw-button", "n_clicks"),
+    Input("sarima-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def update_recommendation_table(hw_clicks, sarima_clicks):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+
+    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    df = top_routes_df.copy()
+
+    if button_id == "hw-button":
+        df = df.sort_values("quotient_holt", ascending=True)
+    elif button_id == "sarima-button":
+        df = df.sort_values("quotient_sarima", ascending=True)
+
+    return df.to_dict("records")
+
 
 # Run app
 if __name__ == '__main__':

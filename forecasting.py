@@ -88,6 +88,7 @@ def forecast_passengers(df, periods=12):
         "DATE": forecast_dates,
         "FORECAST_PASSENGERS": forecast.values
     })
+    
     return forecast_df
 
 def get_forecast_for_year(df, target_year, periods=12):
