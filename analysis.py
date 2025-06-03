@@ -156,8 +156,11 @@ def generate_route_insights(df):
         stl = STL(ts, period=12)
         res = stl.fit()
 
+        avg_passengers = ts.mean()
         season_amp = res.seasonal.max() - res.seasonal.min()
+        season_amp_pct = (season_amp / avg_passengers) * 100
 
+        
         # IQR method to detect outliers in residuals
         resid = res.resid
         q1, q3 = np.percentile(resid, [25, 75])
@@ -198,7 +201,7 @@ def generate_route_insights(df):
         insights.append({
             "route": route,
             "trend_slope": round(slope, 2),
-            "season_amp": round(season_amp, 1),
+            "season_amp_pct": round(season_amp_pct, 1),
             "outlier_count": int(outliers),
             "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else "-",
             "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else "-",

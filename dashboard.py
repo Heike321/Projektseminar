@@ -236,8 +236,8 @@ app.layout = html.Div(
                                     columns=[
                                         {"name": "Route", "id": "route"},
                                         {"name": "Trend ↑", "id": "trend_slope"},
-                                        {"name": "Season Amp.", "id": "season_amp"},
-                                        {"name": "Outliers", "id": "outlier_count"},
+                                        {"name": "Seasonal Amp.(%)", "id": "season_amp_pct"},
+                                        {"name": "Outliers(Residuals)", "id": "outlier_count"},
                                         {"name": "MAE Holt-Winters", "id": "mae_holt"},
                                         {"name": "MAE/Trend(HW)", "id": "quotient_holt"},
                                         {"name": "MAE SARIMA", "id": "mae_sarima"},
