@@ -206,8 +206,8 @@ def generate_route_insights(df):
             "trend_slope": round(slope, 2),
             "season_amp_pct": round(season_amp_pct, 1),
             "outlier_count": int(outliers),
-            "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else "-",
-            "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else "-",
+            "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else np.nan,
+            "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else np.nan,
             "quotient_holt": round(mae_hw / slope, 3) if (not np.isnan(mae_hw) and slope != 0) else np.nan,
             "quotient_sarima": round(mae_sarima / slope, 3) if (not np.isnan(mae_sarima) and slope != 0) else np.nan
         })
@@ -222,7 +222,7 @@ def generate_route_insights(df):
 
 if __name__ == "__main__":
     
-    df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
+    df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv",low_memory=False)#, dtype={14: str})
     df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")
     df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
     
