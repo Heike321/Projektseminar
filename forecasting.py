@@ -169,4 +169,22 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
     return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
 
 
+def sarima_forecast_load_factor(df, forecast_year, periods=12):
+    df = df.copy()
+    df = df.sort_values('DATE')
+    df.index = pd.to_datetime(df['DATE'])
+    df.index.freq = 'MS'
 
+    # Nur historische Daten vor dem Vorhersagejahr
+    ts = df[df.index.year < forecast_year]['LOAD_FACTOR']
+
+    model = SARIMAX(ts, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
+    fit = model.fit(disp=False)
+
+    forecast_index = pd.date_range(start=f"{forecast_year}-01-01", periods=periods, freq='MS')
+    forecast_values = fit.get_forecast(steps=periods).predicted_mean
+
+    return pd.DataFrame({
+        "DATE": forecast_index,
+        "FORECAST_LOAD_FACTOR": forecast_values
+    })

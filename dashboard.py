@@ -6,7 +6,7 @@ import json
 import plotly.graph_objects as go
 import plotly.express as px
 from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot , generate_route_insights
-from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data
+from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data, sarima_forecast_load_factor
 from preprocess import iata_to_name
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -27,9 +27,8 @@ def check_zero_stats(df):
     print("PASSENGERS == 0:", (df["PASSENGERS"] == 0).sum())
     print("SEATS & PASSENGERS == 0:", ((df["SEATS"] == 0) & (df["PASSENGERS"] == 0)).sum())
 check_zero_stats(data)
-'''
 data = data[(data["SEATS"] > 0) & (data["PASSENGERS"] > 0)]
-
+'''
 
 # Load precomputed route insights and select the top 10 routes with the highest increasing trend
 route_insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
@@ -55,7 +54,10 @@ app.layout = html.Div(
     },
 
     children=[
+
+        
         html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
+            
         
         #Dropdowns + KPIs 
         html.Div(style={'display': 'flex'}, children=[
@@ -204,9 +206,21 @@ app.layout = html.Div(
                         dcc.Tab(
                             label='Recommendation',
                             children=[
-                                html.H4("Top Routes by Highest Increasing Trend"),
+                                html.H4("Recommed top routes sorted by: "),
                                 html.Div([
-                                    html.Button("Recommend by Holt-Winters", 
+                                    html.Button("Highest Increasing Trend", 
+                                        id="t-button", 
+                                        n_clicks=0,
+                                        style={
+                                            'backgroundColor': '#9467bd',
+                                            'color': 'white',
+                                            'border': 'none',
+                                            'padding': '10px 20px',
+                                            'margin': '0 10px',
+                                            'borderRadius': '5px',
+                                            'cursor': 'pointer'
+                                        }),
+                                    html.Button("Holt-Winters", 
                                         id="hw-button", 
                                         n_clicks=0,
                                         style={
@@ -218,7 +232,7 @@ app.layout = html.Div(
                                             'borderRadius': '5px',
                                             'cursor': 'pointer'
                                         }),
-                                    html.Button("Recommend by SARIMA", 
+                                    html.Button("SARIMA", 
                                         id="sarima-button", 
                                         n_clicks=0,
                                         style={
@@ -388,24 +402,7 @@ def update_map(selected_origin):
                 showlegend=False,
                 text=f"{iata_to_name.get(row['ORIGIN'], row['ORIGIN'])} → {iata_to_name.get(row['DEST'], row['DEST'])}"
             ))
-            '''
-            # Zielmarker mit Legende für jedes Ziel (Funktioniert noch nicht... die Legende wiederholt sich immer wieder)
-            filtered = filtered.copy()
-            filtered["DEST_LAT"] = filtered["DEST_LAT"].round(3)
-            filtered["DEST_LON"] = filtered["DEST_LON"].round(3)
-            unique_dests = filtered.drop_duplicates(subset=["DEST", "DEST_LAT", "DEST_LON"])
-
-            for _, dest_row in unique_dests.iterrows():
-                fig.add_trace(go.Scattergeo(
-                    lon=[dest_row["DEST_LON"]],
-                    lat=[dest_row["DEST_LAT"]],
-                    mode='markers',
-                    marker=dict(size=8, symbol='star', color='red'),
-                    name=f"Ziel: {iata_to_name.get(dest_row['DEST'], dest_row['DEST'])}",
-                    showlegend=True,
-                    hoverinfo='skip'
-                ))
-            '''
+            
             # Target marker
             fig.add_trace(go.Scattergeo(
                 lon=[row["DEST_LON"]],
@@ -606,7 +603,9 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
 
         # SARIMA forecast
         train_df, valid_df, sarima_2024_df, sarima_2025_df, err = sarima_forecast(filtered)
-
+        sarima_forecast_load_df = pd.concat([
+            sarima_forecast_load_factor(filtered, year) for year in forecast_years])
+         
 
         # Filter SARIMA Forecast for forecast_year
         
@@ -638,13 +637,13 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         ))
 
         # SARIMA Forecast Load Factor - Green
-        '''
+        
         lf_fig.add_trace(go.Scatter(
-            x=sarima_forecast_df['DATE'], y=sarima_forecast_df['LOAD_FACTOR'],  
-            mode='lines+markers', name=f'SARIMA Forecast Load Factor {forecast_year}',
+            x=sarima_forecast_load_df['DATE'], y=sarima_forecast_load_df['FORECAST_LOAD_FACTOR'],  
+            mode='lines+markers', name=f'SARIMA Forecast Load Factor {year_label}',
             line=dict(color='#2ca02c', dash='dashdot')
         ))
-        '''
+        
         # Actual Passengers figure - Blue
         pax_fig.add_trace(go.Scatter(
             x=actual_df['DATE'], y=actual_df['PASSENGERS'],
@@ -783,6 +782,8 @@ def no_forecast_figure(message="No forecast available"):
     )
     return fig
 
+#Callback to update the KPI section based on selected route, airline, and year. It calculates average load factor, maximum passengers on a single flight, 
+#and total passengers for the selected criteria.
 @app.callback(
     Output('kpi-container', 'children'),
     Input('route-selector', 'value'),
@@ -825,28 +826,88 @@ def update_kpis(route, airline, year):
         kpi_box("Total Passengers", f"{total_passengers:,}", color_total)
     ]
 
-
+#Callback to update the recommendation table based on which sorting button is clicked
 @app.callback(
     Output("analysis-table", "data"),
+    Output("t-button", "style"),
+    Output("hw-button", "style"),
+    Output("sarima-button", "style"),
+    Output('analysis-table', 'style_data_conditional'),
+    Input("t-button", "n_clicks"),
     Input("hw-button", "n_clicks"),
     Input("sarima-button", "n_clicks"),
     prevent_initial_call=True
 )
-def update_recommendation_table(hw_clicks, sarima_clicks):
-    ctx = dash.callback_context
-    if not ctx.triggered:
-        raise dash.exceptions.PreventUpdate
 
-    button_id = ctx.triggered[0]["prop_id"].split(".")[0]
+def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
+    # Store click counts for all buttons
+    clicks = {
+        'trend': trend_clicks,
+        'hw': hw_clicks,
+        'sarima': sarima_clicks,
+    }
 
-    df = top_routes_df.copy()
+    # Determine which button was clicked most recently
+    # If counts are equal or None, fallback to 'trend'
+    if all(c in [None, 0] for c in clicks.values()):
+        active = 'trend'
+    else:
+        active = max(clicks, key=lambda k: clicks[k] if clicks[k] is not None else -1)
 
-    if button_id == "hw-button":
-        df = df.sort_values("quotient_holt", ascending=True)
-    elif button_id == "sarima-button":
-        df = df.sort_values("quotient_sarima", ascending=True)
+    # Sort table data based on selected method
+    if active == 'hw':
+        sorted_df = top_routes_df.sort_values('quotient_holt')
+    elif active == 'sarima':
+        sorted_df = top_routes_df.sort_values('quotient_sarima')
+    else:  # Default to trend sort
+        sorted_df = top_routes_df.sort_values('trend_slope', ascending=False)
 
-    return df.to_dict("records")
+    # Define base style (gray for inactive buttons)
+    base_style = {
+        'backgroundColor': '#444',
+        'color': 'white',
+        'border': 'none',
+        'padding': '10px 20px',
+        'margin': '0 10px',
+        'borderRadius': '5px',
+        'cursor': 'pointer'
+    }
+
+    # Define custom active colors
+    color_map = {
+        'trend': '#9467bd',   # Purple
+        'hw': '#ff7f0e',      # Orange
+        'sarima': '#2ca02c'   # Green
+    }
+
+    # Generate button styles dynamically
+    def get_style(button_name):
+        if active == button_name:
+            return {**base_style, 'backgroundColor': color_map[button_name], 'color': 'black'}
+        return base_style
+    # Highlight the active sort column in light gray
+    highlight_col = {
+        'trend': 'trend_slope',
+        'hw': 'quotient_holt',
+        'sarima': 'quotient_sarima'
+    }[active]
+
+    style_data_conditional = [{
+        "if": {"column_id": highlight_col},
+        "backgroundColor": "#f0f0f0",  # Light gray
+        "fontWeight": "bold"
+    }]
+
+    # Return updated table and styles
+    return (
+        sorted_df.to_dict('records'),
+        get_style('trend'),
+        get_style('hw'),
+        get_style('sarima'),
+        style_data_conditional
+    )
+
+
 
 
 # Run app

@@ -27,7 +27,6 @@ airports_df = pd.read_csv("airports.dat", header=None, names=[
     
 # Create a dictionary to map IATA codes to airport names
 iata_to_name = dict(zip(airports_df["IATA"], airports_df["Name"]))
-#iata_to_coords = airports_df.set_index("IATA")[["Latitude", "Longitude"]].dropna().to_dict(orient="index")
 iata_to_coords = airports_df.drop_duplicates(subset=["IATA"]).set_index("IATA")[["Latitude", "Longitude"]].dropna().to_dict(orient="index")
 
 def preprocess():

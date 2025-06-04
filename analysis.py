@@ -79,7 +79,8 @@ def get_trend_plot(df):
         x=decomposition.trend.index,
         y=decomposition.trend.values,
         mode="lines",
-        name="Trend"
+        name="Trend",
+        line=dict(color='#9467bd'),
     ))
 
     fig.update_layout(
@@ -97,7 +98,9 @@ def get_trend_plot(df):
             griddash='dot',          # dashed lines
             zeroline=False,
             showline=False
+            
         ),
+        
         plot_bgcolor="#222222",
         paper_bgcolor="#111111",
         font_color="white"
