@@ -114,7 +114,7 @@ app.layout = html.Div(
                                     {"label": "2024", "value": 2024},
                                     {"label": "Forecast 2024", "value": "forecast_2024"},
                                     {"label": "Forecast 2025", "value": "forecast_2025"},
-                                    {"label": "All years", "value": "forecast_all"},
+                                    {"label": "Forecast all years", "value": "forecast_all"},
 
                                 ],
                                 value="all",
