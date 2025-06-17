@@ -8,6 +8,12 @@ from statsmodels.tsa.seasonal import STL
 from sklearn.metrics import mean_absolute_error
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+<<<<<<< HEAD
+from sklearn.metrics import mean_absolute_error
+from statsforecast import StatsForecast
+from statsforecast.models import AutoARIMA
+=======
+>>>>>>> 7523b61da5c9bb3645edac530544394e48894c80
 from forecasting import sarima_forecast, forecast_passengers
 
  
@@ -184,7 +190,7 @@ def generate_route_insights(df):
             mae_hw = (mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw))/ np.mean(valid_hw["PASSENGERS"])
         except:
             mae_hw = np.nan
-
+        """
         # Forecast Error: SARIMA (2024)
         
         try:
@@ -199,6 +205,37 @@ def generate_route_insights(df):
 
             mae_sarima = (mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima))/ np.mean(valid_sarima["PASSENGERS"])
         except:
+            mae_sarima = np.nan
+        """
+         # Forecast Error: AutoARIMA (2024)
+        try:
+            train_auto = route_df[route_df["DATE"] < "2024-01-01"]
+            valid_auto = route_df[(route_df["DATE"] >= "2024-01-01") & (route_df["DATE"] < "2025-01-01")]
+
+            if len(train_auto) < 24 or len(valid_auto) == 0:
+                raise ValueError("Not enough data for AutoARIMA forecast")
+
+            df_train = train_auto[["DATE", "PASSENGERS"]].copy()
+            df_train.columns = ["ds", "y"]
+            df_train["y"] = pd.to_numeric(df_train["y"], errors="coerce")
+            df_train = df_train.dropna(subset=["y"])
+            df_train["unique_id"] = "series"
+            df_train = df_train[["unique_id", "ds", "y"]]
+
+            # Korrekte Initialisierung
+            sf_model = StatsForecast(models=[AutoARIMA(season_length=12)], freq='MS')
+            forecast_df = sf_model.forecast(df=df_train, h=12)
+
+
+
+            forecast_values = forecast_df[forecast_df["unique_id"] == "series"]["AutoARIMA"].values
+            forecast_values = forecast_values[:len(valid_auto)]
+            true_values = valid_auto["PASSENGERS"].values[:len(forecast_values)]
+
+            mae_sarima = mean_absolute_error(true_values, forecast_values)
+
+        except Exception as e:
+            print(f"⚠️ AutoARIMA failed: {e}")
             mae_sarima = np.nan
         '''
 
