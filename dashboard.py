@@ -253,9 +253,9 @@ app.layout = html.Div(
                                         {"name": "Seasonal Amp.(%)", "id": "season_amp_pct"},
                                         {"name": "Outliers(Residuals)", "id": "outlier_count"},
                                         {"name": "MAE Holt-Winters", "id": "mae_holt"},
-                                        {"name": "MAE/Trend(HW)", "id": "quotient_holt"},
+                                       # {"name": "MAE/Trend(HW)", "id": "quotient_holt"},
                                         {"name": "MAE SARIMA", "id": "mae_sarima"},
-                                        {"name": "MAE/Trend(S)", "id": "quotient_sarima"}
+                                        #{"name": "MAE/Trend(S)", "id": "quotient_sarima"}
                                     ],
                                     data=top_routes_df.to_dict("records"),
                                     style_table={'overflowX': 'auto'},
@@ -598,15 +598,41 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         
         forecast_df = pd.concat([get_forecast_for_year(filtered, year) for year in forecast_years])
 
-        # Filter actual data for forecast year (if available)
+        # Filter actual data for forecast year 
         actual_df = filtered.copy()
+        '''
+        # SARIMA forecasts for each selected forecast year
+        sarima_forecast_dfs = []
+        sarima_forecast_load_dfs = []
 
+        for year in forecast_years:
+            # Get SARIMA forecast for passenger numbers
+            train_df, valid_df, forecast_valid_df, _ = sarima_forecast(filtered, valid_year=year, forecast_year=year + 1)
+            forecast_valid_df["TYPE"] = f"Forecast {year}"
+            sarima_forecast_dfs.append(forecast_valid_df)
+
+            # Get SARIMA forecast for load factor
+            _, forecast_load_df = sarima_forecast_load_factor(filtered, forecast_year=year)
+            forecast_load_df["TYPE"] = f"Forecast {year}"
+            sarima_forecast_load_dfs.append(forecast_load_df)
+
+        # Combine SARIMA forecasts for all selected years
+        sarima_forecast_df = pd.concat(sarima_forecast_dfs, ignore_index=True)
+
+        # Combine SARIMA load factor forecasts
+        sarima_forecast_load_df = pd.concat(sarima_forecast_load_dfs, ignore_index=True)
+        '''
+
+        
+        
         # SARIMA forecast
         train_df, valid_df, sarima_2024_df, sarima_2025_df, err = sarima_forecast(filtered)
+        
+
         sarima_forecast_load_df = pd.concat([
             sarima_forecast_load_factor(filtered, year) for year in forecast_years])
          
-
+        
         # Filter SARIMA Forecast for forecast_year
         
         sarima_parts = []
@@ -615,6 +641,10 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         if 2025 in forecast_years:
             sarima_parts.append(sarima_2025_df[sarima_2025_df["TYPE"] == "Forecast 2025"])
         sarima_forecast_df = pd.concat(sarima_parts, ignore_index=True)
+          
+        
+
+
 
         
         # Sort data before plotting
@@ -856,9 +886,9 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
 
     # Sort table data based on selected method
     if active == 'hw':
-        sorted_df = top_routes_df.sort_values('quotient_holt')
+        sorted_df = top_routes_df.sort_values('mae_holt')
     elif active == 'sarima':
-        sorted_df = top_routes_df.sort_values('quotient_sarima')
+        sorted_df = top_routes_df.sort_values('mae_sarima')
     else:  # Default to trend sort
         sorted_df = top_routes_df.sort_values('trend_slope', ascending=False)
 
@@ -888,8 +918,8 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
     # Highlight the active sort column in light gray
     highlight_col = {
         'trend': 'trend_slope',
-        'hw': 'quotient_holt',
-        'sarima': 'quotient_sarima'
+        'hw': 'mae_holt',
+        'sarima': 'mae_sarima'
     }[active]
 
     style_data_conditional = [{

@@ -5,7 +5,8 @@ import numpy as np
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import warnings 
-
+from statsforecast import StatsForecast
+from statsforecast.models import AutoARIMA
 warnings.filterwarnings("ignore")
 
 def load_historical_data(file_path):
@@ -188,3 +189,48 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         "DATE": forecast_index,
         "FORECAST_LOAD_FACTOR": forecast_values
     })
+'''
+
+
+def sarima_forecast(df, valid_year, forecast_year, periods=12):
+    
+    df = df.copy()
+    df['DATE'] = pd.to_datetime(df['DATE'])
+    df = df.sort_values('DATE').reset_index(drop=True)
+    df = df[['DATE', 'PASSENGERS']]
+
+    valid_start = pd.Timestamp(f"{valid_year}-01-01")
+    forecast_start = pd.Timestamp(f"{forecast_year}-01-01")
+
+    train_data = df[df['DATE'] < valid_start]
+    valid_data = df[(df['DATE'] >= valid_start) & (df['DATE'] < forecast_start)]
+
+    sf = StatsForecast(models=[AutoARIMA(season_length=12)], freq='MS', n_jobs=1)
+    
+
+    sf.fit(train_data[['DATE', 'PASSENGERS']].rename(columns={"DATE": "ds", "PASSENGERS": "y"}).assign(unique_id="id"))
+    forecast_valid = sf.predict(h=len(valid_data)).rename(columns={"ds": "DATE", "AutoARIMA": "VALUE"})
+
+    train_full = df[df['DATE'] < forecast_start]
+    sf.fit(train_full[['DATE', 'PASSENGERS']].rename(columns={"DATE": "ds", "PASSENGERS": "y"}).assign(unique_id="id"))
+    forecast_future = sf.predict(h=periods).rename(columns={"ds": "DATE", "AutoARIMA": "VALUE"})
+
+    return train_data, valid_data, forecast_valid, forecast_future
+
+
+def sarima_forecast_load_factor(df, forecast_year, periods=12):
+    
+    df = df.copy()
+    df['DATE'] = pd.to_datetime(df['DATE'])
+    df = df.sort_values('DATE').reset_index(drop=True)
+
+    forecast_start = pd.Timestamp(f"{forecast_year}-01-01")
+    train_data = df[df['DATE'] < forecast_start]
+
+    sf = StatsForecast(models=[AutoARIMA(season_length=12)], freq='MS', n_jobs=1)
+    
+    sf.fit(train_data.rename(columns={"DATE": "ds", "LOAD_FACTOR": "y"}).assign(unique_id="id"))
+    forecast = sf.predict(h=periods).rename(columns={"ds": "DATE", "AutoARIMA": "FORECAST_LOAD_FACTOR"})
+
+    return train_data, forecast
+'''

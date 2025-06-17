@@ -8,7 +8,7 @@ from statsmodels.tsa.seasonal import STL
 from sklearn.metrics import mean_absolute_error
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-
+from forecasting import sarima_forecast, forecast_passengers
 
  
 
@@ -169,7 +169,7 @@ def generate_route_insights(df):
         q1, q3 = np.percentile(resid, [25, 75])
         iqr = q3 - q1
         outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
-        
+        '''
         # Forecast Error: Holt-Winters (2024) 
         try:
             train_hw = route_df[route_df["DATE"].dt.year < 2024]
@@ -186,6 +186,7 @@ def generate_route_insights(df):
             mae_hw = np.nan
 
         # Forecast Error: SARIMA (2024)
+        
         try:
             train_sarima = route_df[route_df["DATE"] < "2024-01-01"]
             valid_sarima = route_df[(route_df["DATE"] >= "2024-01-01") & (route_df["DATE"] < "2025-01-01")]
@@ -196,10 +197,33 @@ def generate_route_insights(df):
             fit_sarima = model_sarima.fit(disp=False)
             forecast_sarima = fit_sarima.get_forecast(steps=12).predicted_mean
 
-            mae_sarima = (mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima))/ np.mean(valid_hw["PASSENGERS"])
+            mae_sarima = (mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima))/ np.mean(valid_sarima["PASSENGERS"])
         except:
             mae_sarima = np.nan
+        '''
 
+        #Forecast-Error
+        # Filter train and validation data (same as in SARIMA)
+        train_data = df[df['DATE'].dt.year < valid_year]
+        valid_data = df[df['DATE'].dt.year == valid_year]
+
+        # Holt-Winters Forecast auf Basis train_data
+        forecast_df = forecast_passengers(train_data, periods=len(valid_data))
+
+        # MAE mit valid_data berechnen
+        mae_holt = mean_absolute_error(valid_data['PASSENGERS'], forecast_df['FORECAST_PASSENGERS']) / valid_data['PASSENGERS'].mean()
+
+        # Forecast und Validierungsdaten aus forecasting.py holen
+        train_data, valid_data, forecast_valid, _ = sarima_forecast(route_df, valid_year=valid_year, forecast_year=valid_year+1)
+
+        # MAE berechnen 
+        mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
+
+
+
+
+
+        
         # Collect results
         insights.append({
             "route": route,
@@ -208,8 +232,8 @@ def generate_route_insights(df):
             "outlier_count": int(outliers),
             "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else np.nan,
             "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else np.nan,
-            "quotient_holt": round(mae_hw / slope, 3) if (not np.isnan(mae_hw) and slope != 0) else np.nan,
-            "quotient_sarima": round(mae_sarima / slope, 3) if (not np.isnan(mae_sarima) and slope != 0) else np.nan
+            #"quotient_holt": round(mae_hw / slope, 3) if (not np.isnan(mae_hw) and slope != 0) else np.nan,
+            #"quotient_sarima": round(mae_sarima / slope, 3) if (not np.isnan(mae_sarima) and slope != 0) else np.nan
         })
 
     df_result = pd.DataFrame(insights)
