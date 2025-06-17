@@ -187,10 +187,37 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
         df_valid_train.columns = ['ds', 'y']
         df_valid_train['unique_id'] = 'series'
         df_valid_train = df_valid_train[['unique_id', 'ds', 'y']]
-        sf_valid = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+
+        autoarima_config = AutoARIMA(
+            season_length=12,
+            stepwise=True,  #nicht alle Modellkombinationen ausprobieren sondern heuristischer Suchalgorithmus
+            approximation=False,
+            max_order=15, # summe der parameter nicht über 15 , kein überfitten
+            start_p=1, max_p=3, # 0 ausgeschlossen keine flache Linie
+            start_q=0, max_q=3,
+            max_d=1, # maximal eine differnzierung - verjhindert mehrfache und dass e zu glatt wird
+            start_P=1, max_P=2, # saisonale Muster berücksichtigen
+            start_Q=0, max_Q=2,
+            max_D=1
+        )        
+
+        # Konfiguration anwenden
+        sf_valid = StatsForecast(models=[autoarima_config], freq='MS')
+        #sf_valid = StatsForecast(models=[autoarima_config], freq='MS', trace=True)
+
+        sf_final = StatsForecast(models=[autoarima_config], freq='MS')
+
+        # Forecast für Validierung
         forecast_valid = sf_valid.forecast(df=df_valid_train, h=len(valid_2024))
         forecast_df_2024 = forecast_valid.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
         forecast_df_2024['TYPE'] = 'Forecast 2024'
+
+
+    
+        # sf_valid = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        #forecast_valid = sf_valid.forecast(df=df_valid_train, h=len(valid_2024))
+        #forecast_df_2024 = forecast_valid.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
+        #forecast_df_2024['TYPE'] = 'Forecast 2024'
 
         # Calculate validation errors
         mae = mean_absolute_error(valid_2024['PASSENGERS'].values, forecast_valid['AutoARIMA'].values[:len(valid_2024)])
@@ -202,7 +229,7 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
         df_full_train.columns = ['ds', 'y']
         df_full_train['unique_id'] = 'series'
         df_full_train = df_full_train[['unique_id', 'ds', 'y']]
-        sf_final = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        #sf_final = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
         forecast_2025 = sf_final.forecast(df=df_full_train, h=periods)
         forecast_df_2025 = forecast_2025.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
         forecast_df_2025['TYPE'] = 'Forecast 2025'
