@@ -8,12 +8,10 @@ from statsmodels.tsa.seasonal import STL
 from sklearn.metrics import mean_absolute_error
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-<<<<<<< HEAD
 from sklearn.metrics import mean_absolute_error
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
-=======
->>>>>>> 7523b61da5c9bb3645edac530544394e48894c80
+
 
 
  
