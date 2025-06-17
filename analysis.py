@@ -11,8 +11,7 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_absolute_error
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
-=======
->>>>>>> 7523b61da5c9bb3645edac530544394e48894c80
+
 from forecasting import sarima_forecast, forecast_passengers
 
  
@@ -174,7 +173,7 @@ def generate_route_insights(df):
         q1, q3 = np.percentile(resid, [25, 75])
         iqr = q3 - q1
         outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
-        '''
+        
         # Forecast Error: Holt-Winters (2024) 
         try:
             train_hw = route_df[route_df["DATE"].dt.year < 2024]
@@ -189,7 +188,8 @@ def generate_route_insights(df):
             mae_hw = (mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw))/ np.mean(valid_hw["PASSENGERS"])
         except:
             mae_hw = np.nan
-        """
+
+        '''
         # Forecast Error: SARIMA (2024)
         
         try:
@@ -205,7 +205,7 @@ def generate_route_insights(df):
             
         except:
             mae_sarima = np.nan
-        """
+        '''
          # Forecast Error: AutoARIMA (2024)
         try:
             train_auto = route_df[route_df["DATE"] < "2024-01-01"]
@@ -236,9 +236,10 @@ def generate_route_insights(df):
         except Exception as e:
             print(f"⚠️ AutoARIMA failed: {e}")
             mae_sarima = np.nan
+        
         '''
-
-        #Forecast-Error
+        #Forecast-Error 
+        #Ich versuche hier die Fehlerberechnung zu vereinfachen, sodass hier nur die Werte von forecasting.py verwendet werden und nicht neue Vorhersagen gemacht werden...
         # Filter train and validation data (same as in SARIMA)
         train_data = df[df['DATE'].dt.year < valid_year]
         valid_data = df[df['DATE'].dt.year == valid_year]
@@ -254,7 +255,7 @@ def generate_route_insights(df):
 
         # MAE berechnen 
         mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
-
+        '''
 
 
 
