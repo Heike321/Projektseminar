@@ -5,6 +5,9 @@ import numpy as np
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import warnings 
+from statsforecast import StatsForecast
+from statsforecast.models import AutoARIMA
+from pathlib import Path
 
 warnings.filterwarnings("ignore")
 
@@ -109,8 +112,8 @@ def get_forecast_for_year(df, target_year, periods=12):
     forecast_df = pax_forecast_df.merge(lf_forecast_df, on='DATE', how='left')
     return forecast_df
 
-
-
+# SARIMAX
+""""
 
 def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
    
@@ -168,6 +171,53 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
     #return combined_df, error_text
     return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
 
+"""
+# AutoARIMA
+def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
+    # Sort and reset index for consistency
+    df = df.sort_values('DATE').reset_index(drop=True)
+    train_initial = df[df['DATE'] < valid_start]
+    valid_2024 = df[(df['DATE'] >= valid_start) & (df['DATE'] < pred_start)]
+    full_train = df[df['DATE'] < pred_start]
+
+    try:
+        # Forecast validation period (2024)
+        df_valid_train = train_initial[['DATE', 'PASSENGERS']].copy()
+        df_valid_train.columns = ['ds', 'y']
+        df_valid_train['unique_id'] = 'series'
+        df_valid_train = df_valid_train[['unique_id', 'ds', 'y']]
+        sf_valid = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        forecast_valid = sf_valid.forecast(df=df_valid_train, h=len(valid_2024))
+        forecast_df_2024 = forecast_valid.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
+        forecast_df_2024['TYPE'] = 'Forecast 2024'
+
+        # Calculate validation errors
+        mae = mean_absolute_error(valid_2024['PASSENGERS'].values, forecast_valid['AutoARIMA'].values[:len(valid_2024)])
+        rmse = np.sqrt(mean_squared_error(valid_2024['PASSENGERS'].values, forecast_valid['AutoARIMA'].values[:len(valid_2024)]))
+        error_text = f"📏 MAE (2024): {mae:.0f} passengers | RMSE: {rmse:.0f}"
+
+        # Forecast future period (2025)
+        df_full_train = full_train[['DATE', 'PASSENGERS']].copy()
+        df_full_train.columns = ['ds', 'y']
+        df_full_train['unique_id'] = 'series'
+        df_full_train = df_full_train[['unique_id', 'ds', 'y']]
+        sf_final = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        forecast_2025 = sf_final.forecast(df=df_full_train, h=periods)
+        forecast_df_2025 = forecast_2025.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
+        forecast_df_2025['TYPE'] = 'Forecast 2025'
+
+    except Exception as e:
+        # Handle any errors during model fitting or forecasting
+        forecast_df_2024 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
+        forecast_df_2025 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
+        error_text = f"Error during model fitting or forecasting: {e}"
+
+    real_train = train_initial.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Training data')
+    real_valid = valid_2024.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Actual 2024')
+    return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
+
+# SARIMAX
+"""
 
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df = df.copy()
@@ -188,3 +238,68 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         "DATE": forecast_index,
         "FORECAST_LOAD_FACTOR": forecast_values
     })
+""" 
+
+# Auto ARIMA
+def sarima_forecast_load_factor(df, forecast_year, periods=12):
+    df = df.copy()
+    df = df.sort_values('DATE')
+    df.index = pd.to_datetime(df['DATE'])
+    df.index.freq = 'MS'
+    try:
+        ts = df[df.index.year < forecast_year][['LOAD_FACTOR']].copy()
+        ts = ts.reset_index()
+        ts.columns = ['ds', 'y']
+        ts['unique_id'] = 'series'
+        ts = ts[['unique_id', 'ds', 'y']]
+        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        forecast = sf.forecast(df=ts, h=periods)
+        forecast_values = forecast['AutoARIMA'].values
+        forecast_index = pd.date_range(start=f"{forecast_year}-01-01", periods=periods, freq='MS')
+        return pd.DataFrame({"DATE": forecast_index, "FORECAST_LOAD_FACTOR": forecast_values})
+    except Exception as e:
+        return pd.DataFrame(columns=["DATE", "FORECAST_LOAD_FACTOR"])
+
+if __name__ == "__main__":
+    # Beispielhafte Testdaten generieren
+    date_rng = pd.date_range(start="2022-01-01", end="2024-12-01", freq='MS')
+    test_df = pd.DataFrame({
+        "DATE": date_rng,
+        "PASSENGERS": np.random.randint(10000, 50000, size=len(date_rng))
+    })
+    # Optional: Lade zusätzlich den SEATS und berechne LOAD_FACTOR, falls notwendig
+    test_df["SEATS"] = test_df["PASSENGERS"] * 1.2
+    test_df["LOAD_FACTOR"] = test_df["PASSENGERS"] / test_df["SEATS"]
+
+    # Funktion aufrufen
+    train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df)
+
+    # Ergebnisse ausgeben
+    print("\n--- TEST ---")
+    print("Fehlermeldung / Status:", err)
+    print("Forecast 2024:\n", fc_2024.head())
+    print("Forecast 2025:\n", fc_2025.head())
+
+    #Testing
+import matplotlib.pyplot as plt
+
+"""
+# Testdaten nochmal setzen
+forecast_year = 2025
+test_df["DATE"] = pd.to_datetime(test_df["DATE"])
+test_df = test_df.sort_values("DATE")
+test_df = test_df.set_index("DATE")
+test_df.index.freq = 'MS'
+
+# Zeitreihe extrahieren
+ts = test_df[test_df.index.year < forecast_year]['LOAD_FACTOR']
+
+# Standardabweichung und Plot
+print("\nStandardabweichung LOAD_FACTOR:", ts.std())
+ts.plot(title="LOAD_FACTOR Zeitreihe")
+plt.xlabel("Datum")
+plt.ylabel("Load Factor")
+plt.grid(True)
+plt.show()
+
+"""
