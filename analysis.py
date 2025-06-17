@@ -8,7 +8,6 @@ from statsmodels.tsa.seasonal import STL
 from sklearn.metrics import mean_absolute_error
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-<<<<<<< HEAD
 from sklearn.metrics import mean_absolute_error
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
@@ -203,7 +202,7 @@ def generate_route_insights(df):
             fit_sarima = model_sarima.fit(disp=False)
             forecast_sarima = fit_sarima.get_forecast(steps=12).predicted_mean
 
-            mae_sarima = (mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima))/ np.mean(valid_sarima["PASSENGERS"])
+            
         except:
             mae_sarima = np.nan
         """
@@ -232,7 +231,7 @@ def generate_route_insights(df):
             forecast_values = forecast_values[:len(valid_auto)]
             true_values = valid_auto["PASSENGERS"].values[:len(forecast_values)]
 
-            mae_sarima = mean_absolute_error(true_values, forecast_values)
+            mae_sarima = mean_absolute_error(true_values, forecast_values) / np.mean(true_values)
 
         except Exception as e:
             print(f"⚠️ AutoARIMA failed: {e}")

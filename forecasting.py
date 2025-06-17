@@ -218,7 +218,7 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
     return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
 
 # SARIMAX
-"""
+'''
 
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df = df.copy()
@@ -239,3 +239,4 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         "DATE": forecast_index,
         "FORECAST_LOAD_FACTOR": forecast_values
     })
+'''
