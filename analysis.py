@@ -8,7 +8,7 @@ from statsmodels.tsa.seasonal import STL
 from sklearn.metrics import mean_absolute_error
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from sklearn.metrics import mean_absolute_error
+
 
  
 
@@ -181,7 +181,7 @@ def generate_route_insights(df):
             fit_hw = model_hw.fit()
             forecast_hw = fit_hw.forecast(12)
 
-            mae_hw = mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw)
+            mae_hw = (mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw))/ np.mean(valid_hw["PASSENGERS"])
         except:
             mae_hw = np.nan
 
@@ -196,7 +196,7 @@ def generate_route_insights(df):
             fit_sarima = model_sarima.fit(disp=False)
             forecast_sarima = fit_sarima.get_forecast(steps=12).predicted_mean
 
-            mae_sarima = mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima)
+            mae_sarima = (mean_absolute_error(valid_sarima["PASSENGERS"], forecast_sarima))/ np.mean(valid_hw["PASSENGERS"])
         except:
             mae_sarima = np.nan
 
