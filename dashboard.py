@@ -820,7 +820,7 @@ def no_forecast_figure(message="No forecast available"):
     Input('airline-selector', 'value'),
     Input('year-selector', 'value')
 )
-def update_kpis(route, airline, year):
+def update_kpis(route, airline, year):#anschauen
     if not route:
         return []
 
@@ -841,20 +841,47 @@ def update_kpis(route, airline, year):
 
     def kpi_box(label, value, color):
         return html.Div([
-            html.Small(label, style={'color': 'white'}),
-            html.Div(f"{value}", style={'fontSize': '18px', 'fontWeight': 'bold','color': color})
-        ], style={'marginBottom': '4px'})
-        
+            html.Div(label, style={
+                'color': 'white',
+                'fontSize': '10px',
+                'textAlign': 'center',
+                'marginBottom': '1px',
+                'whiteSpace': 'nowrap',
+                'overflow': 'hidden',
+                'textOverflow': 'ellipsis'
+            }),
+            html.Div(value, style={
+                'color': color,
+                'fontWeight': 'bold',
+                'fontSize': 'clamp(9px, 0.9vw, 20px)',  # responsive font size scaling with viewport width, limited between 9px and 20px
+                'textAlign': 'center',
+                'whiteSpace': 'nowrap',
+                'overflow': 'hidden',
+                'textOverflow': 'ellipsis'
+            })
+        ], style={
+            'marginBottom': '10px',
+            'width': '100%',
+        })
+
 
     color_lf = '#4CAF50' if avg_lf > 0.8 else '#FF5722'
     color_max = '#2196F3' if max_pax > 10000 else '#aaaaaa'
     color_total = '#FFC107'
 
-    return [
+    return html.Div([
         kpi_box("Ø Load Factor", f"{avg_lf:.2%}", color_lf),
         kpi_box("Max Passengers", f"{max_pax:,}", color_max),
         kpi_box("Total Passengers", f"{total_passengers:,}", color_total)
-    ]
+    ], style={
+        'backgroundColor': '#222',
+        'padding': '4px',
+        'borderRadius': '8px',
+        'width': '100%',
+        'maxWidth': '100%',
+        'boxSizing': 'border-box',
+        'overflow': 'hidden',
+    })
 
 #Callback to update the recommendation table based on which sorting button is clicked
 @app.callback(
