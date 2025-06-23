@@ -173,6 +173,7 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
     return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
 
 """
+'''
 # AutoARIMA
 def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
     # Sort and reset index for consistency
@@ -216,6 +217,7 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
     real_train = train_initial.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Training data')
     real_valid = valid_2024.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Actual 2024')
     return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
+'''
 
 # SARIMAX
 '''
@@ -240,6 +242,48 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         "FORECAST_LOAD_FACTOR": forecast_values
     })
 '''
+
+def sarima_forecast(df, forecast_year, periods=12):
+    # Sort data and reset index
+    df = df.sort_values('DATE').reset_index(drop=True)
+
+    # Use all data before the forecast year for training
+    train_df = df[df['DATE'].dt.year < forecast_year].copy()
+
+    # Check if actual data for the forecast year exists (optional validation)
+    valid_df = df[df['DATE'].dt.year == forecast_year].copy()
+
+    # Prepare data in the format required by StatsForecast
+    train_df_arima = train_df[['DATE', 'PASSENGERS']].copy()
+    train_df_arima.columns = ['ds', 'y']
+    train_df_arima['unique_id'] = 'series'
+    train_df_arima = train_df_arima[['unique_id', 'ds', 'y']]
+
+    # Initialize AutoARIMA model with seasonal settings
+    sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+
+    try:
+        # Forecast the target period (typically 12 months)
+        forecast = sf.forecast(df=train_df_arima, h=periods)
+
+        # Format output
+        forecast_df = forecast.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
+        forecast_df['TYPE'] = f'Forecast {forecast_year}'
+
+        # Optional error calculation if actual values are available
+        if not valid_df.empty:
+            mae = mean_absolute_error(valid_df['PASSENGERS'].values, forecast_df['VALUE'].values[:len(valid_df)])
+            rmse = np.sqrt(mean_squared_error(valid_df['PASSENGERS'].values, forecast_df['VALUE'].values[:len(valid_df)]))
+            error_text = f"📏 MAE ({forecast_year}): {mae:.0f} passengers | RMSE: {rmse:.0f}"
+        else:
+            error_text = f"No actual data for {forecast_year}."
+
+    except Exception as e:
+        forecast_df = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
+        error_text = f"Error during forecasting: {e}"
+
+    return forecast_df, error_text
+
 # Auto ARIMA
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df = df.copy()

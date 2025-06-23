@@ -600,34 +600,16 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
 
         # Filter actual data for forecast year 
         actual_df = filtered.copy()
-        '''
-        # SARIMA forecasts for each selected forecast year
-        sarima_forecast_dfs = []
-        sarima_forecast_load_dfs = []
-
-        for year in forecast_years:
-            # Get SARIMA forecast for passenger numbers
-            train_df, valid_df, forecast_valid_df, _ = sarima_forecast(filtered, valid_year=year, forecast_year=year + 1)
-            forecast_valid_df["TYPE"] = f"Forecast {year}"
-            sarima_forecast_dfs.append(forecast_valid_df)
-
-            # Get SARIMA forecast for load factor
-            _, forecast_load_df = sarima_forecast_load_factor(filtered, forecast_year=year)
-            forecast_load_df["TYPE"] = f"Forecast {year}"
-            sarima_forecast_load_dfs.append(forecast_load_df)
-
-        # Combine SARIMA forecasts for all selected years
-        sarima_forecast_df = pd.concat(sarima_forecast_dfs, ignore_index=True)
-
-        # Combine SARIMA load factor forecasts
-        sarima_forecast_load_df = pd.concat(sarima_forecast_load_dfs, ignore_index=True)
-        '''
-
         
         
         # SARIMA forecast
-        train_df, valid_df, sarima_2024_df, sarima_2025_df, err = sarima_forecast(filtered)
+        #train_df, valid_df, sarima_2024_df, sarima_2025_df, err = sarima_forecast(filtered)
         
+        sarima_2024_df, err_2024 = sarima_forecast(filtered, forecast_year=2024)
+        sarima_2025_df, err_2025 = sarima_forecast(filtered, forecast_year=2025)
+
+        # Combine error text
+        err = f"{err_2024} | {err_2025}"
 
         sarima_forecast_load_df = pd.concat([
             sarima_forecast_load_factor(filtered, year) for year in forecast_years])
@@ -820,7 +802,7 @@ def no_forecast_figure(message="No forecast available"):
     Input('airline-selector', 'value'),
     Input('year-selector', 'value')
 )
-def update_kpis(route, airline, year):#anschauen
+def update_kpis(route, airline, year):
     if not route:
         return []
 
