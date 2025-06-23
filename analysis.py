@@ -220,11 +220,11 @@ def generate_route_insights(df):
             df_train = df_train.dropna(subset=["y"])
             df_train["unique_id"] = "series"
             df_train = df_train[["unique_id", "ds", "y"]]
-
+        
             # Korrekte Initialisierung
             sf_model = StatsForecast(models=[AutoARIMA(season_length=12)], freq='MS')
             forecast_df = sf_model.forecast(df=df_train, h=12)
-
+        
 
 
             forecast_values = forecast_df[forecast_df["unique_id"] == "series"]["AutoARIMA"].values
