@@ -139,7 +139,7 @@ app.layout = html.Div(
                         'border': '1.5px solid #888888',
                         'minWidth': '140px',
                         'maxWidth': '160px',
-                        'height': '180px',
+                        'height': '120px',
                         'boxShadow': '0 2px 6px rgba(0,0,0,0.15)'
                     }),
                 ]),
