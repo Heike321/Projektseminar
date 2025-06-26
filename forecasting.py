@@ -1,6 +1,6 @@
 import pandas as pd
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
-import pandas as pd
+
 import numpy as np
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -8,8 +8,10 @@ import warnings
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
 from pathlib import Path
-from statsforecast import StatsForecast
-from statsforecast.models import AutoARIMA
+
+import json
+
+
 warnings.filterwarnings("ignore")
 
 def load_historical_data(file_path):
@@ -269,7 +271,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         "FORECAST_LOAD_FACTOR": forecast_values
     })
 '''
-
+'''
 def sarima_forecast(df, forecast_year, periods=12):
     # Sort data and reset index
     df = df.sort_values('DATE').reset_index(drop=True)
@@ -310,6 +312,64 @@ def sarima_forecast(df, forecast_year, periods=12):
         error_text = f"Error during forecasting: {e}"
 
     return forecast_df, error_text
+'''
+
+
+def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
+    df = df.sort_values('DATE').reset_index(drop=True)
+    df["DATE"] = pd.to_datetime(df["DATE"])
+    train_df = df[df['DATE'].dt.year < forecast_year].copy()
+    ts = train_df.set_index("DATE")["PASSENGERS"].asfreq("MS")
+
+    forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
+
+    # Try AutoARIMA first
+    try:
+        train_arima = train_df[['DATE', 'PASSENGERS']].copy()
+        train_arima.columns = ['ds', 'y']
+        train_arima['unique_id'] = 'series'
+        train_arima = train_arima[['unique_id', 'ds', 'y']]
+
+        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        forecast = sf.forecast(df=train_arima, h=periods)
+        forecast_df = forecast.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
+        forecast_df['TYPE'] = f"Forecast {forecast_year}"
+
+        model_used = "AutoARIMA"
+        auto_model = sf.models[0]
+        if hasattr(auto_model, 'order') and auto_model.order == (0, 1, 0):
+            raise ValueError("AutoARIMA model too simple, fallback.")
+
+    except:
+        # Try fallback with predefined SARIMA parameters
+        try:
+            with open("custom_sarima_params.json") as f:
+                param_config = json.load(f)
+            key = f"{route} | {airline}" if airline else route
+            if key in param_config:
+                order = tuple(param_config[key]["order"])
+                seasonal_order = tuple(param_config[key]["seasonal_order"])
+            else:
+                order = (1, 1, 1)
+                seasonal_order = (1, 1, 1, 12)
+        except:
+            order = (1, 1, 1)
+            seasonal_order = (1, 1, 1, 12)
+
+        try:
+            model = SARIMAX(ts, order=order, seasonal_order=seasonal_order)
+            fit = model.fit(disp=False)
+            forecast_index = pd.date_range(start=f"{forecast_year}-01-01", periods=periods, freq='MS')
+            forecast_values = fit.get_forecast(steps=periods).predicted_mean
+            forecast_df = pd.DataFrame({
+                "DATE": forecast_index,
+                "VALUE": forecast_values,
+                "TYPE": f"SARIMA Fallback {forecast_year}"
+            })
+        except:
+            forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
+
+    return forecast_df, None
 
 # Auto ARIMA
 def sarima_forecast_load_factor(df, forecast_year, periods=12):

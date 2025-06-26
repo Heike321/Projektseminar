@@ -1,0 +1,353 @@
+{
+    "JFK \u2192 LHR | Virgin Atlantic Airways": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            1,
+            0,
+            12
+        ]
+    },
+    "JFK \u2192 STI | Delta Air Lines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            0,
+            12
+        ]
+    },
+    "JFK \u2192 STI | JetBlue Airways": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "JFK \u2192 LHR | British Airways Plc": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "LAX \u2192 LHR | British Airways Plc": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "LHR \u2192 JFK | British Airways Plc": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            1,
+            0,
+            12
+        ]
+    },
+    "JFK \u2192 LHR | Delta Air Lines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "LHR \u2192 JFK | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            0,
+            12
+        ]
+    },
+    "CUN \u2192 DFW | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "DFW \u2192 LHR | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            1,
+            1,
+            12
+        ]
+    },
+    "JFK \u2192 LHR | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            0,
+            12
+        ]
+    },
+    "LAX \u2192 LHR | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            1,
+            0,
+            12
+        ]
+    },
+    "DFW \u2192 CUN | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "LIM \u2192 MIA | Lan Peru Airlines": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            0,
+            12
+        ]
+    },
+    "LIM \u2192 MIA | American Airlines Inc.": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "JFK \u2192 CDG | Compagnie Natl Air France": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "CDG \u2192 JFK | Compagnie Natl Air France": {
+        "order": [
+            1,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "JFK \u2192 LHR": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            1,
+            0,
+            12
+        ]
+    },
+    "LHR \u2192 JFK": {
+        "order": [
+            1,
+            0,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            0,
+            0,
+            12
+        ]
+    },
+    "JFK \u2192 CDG": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "CDG \u2192 JFK": {
+        "order": [
+            1,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "JFK \u2192 STI": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "DFW \u2192 CUN": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "CUN \u2192 DFW": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "DFW \u2192 LHR": {
+        "order": [
+            0,
+            1,
+            0
+        ],
+        "seasonal_order": [
+            1,
+            1,
+            1,
+            12
+        ]
+    },
+    "LIM \u2192 MIA": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            1,
+            12
+        ]
+    },
+    "LAX \u2192 LHR": {
+        "order": [
+            0,
+            1,
+            1
+        ],
+        "seasonal_order": [
+            0,
+            1,
+            0,
+            12
+        ]
+    }
+}

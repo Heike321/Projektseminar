@@ -1,14 +1,17 @@
 import pandas as pd
-import plotly.express as px
 import numpy as np
-from statsmodels.tsa.seasonal import seasonal_decompose
+
+import plotly.express as px
 import plotly.graph_objects as go
-from scipy import stats
+
 from statsmodels.tsa.seasonal import STL
-from sklearn.metrics import mean_absolute_error
+from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+from scipy import stats
 from sklearn.metrics import mean_absolute_error
+
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
 
@@ -281,6 +284,7 @@ def generate_route_insights(df):
     
     return df_result
 
+
 if __name__ == "__main__":
     
     df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv",low_memory=False)#, dtype={14: str})
@@ -288,4 +292,4 @@ if __name__ == "__main__":
     df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
     
     generate_route_insights(df)
-
+    
