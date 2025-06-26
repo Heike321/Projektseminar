@@ -154,12 +154,21 @@ def generate_route_insights(df):
         # Skip routes with missing values or too little data
         if route_df["PASSENGERS"].isnull().any() or len(route_df) < 36:
             continue
+        # STL decomposition
+        
+        ts = route_df.set_index("DATE")["PASSENGERS"]
+        stl = STL(ts, period=12)
+        res = stl.fit()
 
-        y = route_df["PASSENGERS"].values
-        x = np.arange(len(y))
+        # Use only the trend component for slope estimation
+        trend = res.trend.dropna()
+        if len(trend) >= 12:
+            x = np.arange(len(trend))
+            y = trend.values
+            slope, *_ = np.polyfit(x, y, 1)
+        else:
+            slope = 0
 
-        # Linear trend estimation
-        slope, *_ = np.polyfit(x, y, 1)
 
         # STL decomposition for seasonality and outliers
         ts = route_df.set_index("DATE")["PASSENGERS"]
