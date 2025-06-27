@@ -296,7 +296,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         return pd.DataFrame({"DATE": forecast_index, "FORECAST_LOAD_FACTOR": forecast_values})
     except Exception as e:
         return pd.DataFrame(columns=["DATE", "FORECAST_LOAD_FACTOR"])
-
+'''
 if __name__ == "__main__":
     '''
     # Beispielhafte Testdaten generieren
@@ -310,11 +310,7 @@ if __name__ == "__main__":
     test_df["LOAD_FACTOR"] = test_df["PASSENGERS"] / test_df["SEATS"]
 
     # Funktion aufrufen
-    #train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df)
-   
-    train, valid, fc_2024, _, err = sarima_forecast(test_df, forecast_year=2024)
-    _, _, fc_2025, _, _ = sarima_forecast(test_df, forecast_year=2025)
-
+    train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df) 
 
     # Ergebnisse ausgeben
     print("\n--- TEST ---")
@@ -345,3 +341,4 @@ plt.grid(True)
 plt.show()
 
 """
+'''
