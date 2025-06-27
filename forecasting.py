@@ -296,32 +296,33 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         return pd.DataFrame({"DATE": forecast_index, "FORECAST_LOAD_FACTOR": forecast_values})
     except Exception as e:
         return pd.DataFrame(columns=["DATE", "FORECAST_LOAD_FACTOR"])
-'''
-if __name__ == "__main__":
-    '''
-    # Beispielhafte Testdaten generieren
-    date_rng = pd.date_range(start="2022-01-01", end="2024-12-01", freq='MS')
-    test_df = pd.DataFrame({
-        "DATE": date_rng,
-        "PASSENGERS": np.random.randint(10000, 50000, size=len(date_rng))
-    })
-    # Optional: Lade zusätzlich den SEATS und berechne LOAD_FACTOR, falls notwendig
-    test_df["SEATS"] = test_df["PASSENGERS"] * 1.2
-    test_df["LOAD_FACTOR"] = test_df["PASSENGERS"] / test_df["SEATS"]
 
-    # Funktion aufrufen
-    train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df) 
+#if __name__ == "__main__":
 
-    # Ergebnisse ausgeben
-    print("\n--- TEST ---")
-    print("Fehlermeldung / Status:", err)
-    print("Forecast 2024:\n", fc_2024.head())
-    print("Forecast 2025:\n", fc_2025.head())
+"""
+# Beispielhafte Testdaten generieren
+date_rng = pd.date_range(start="2022-01-01", end="2024-12-01", freq='MS')
+test_df = pd.DataFrame({
+    "DATE": date_rng,
+    "PASSENGERS": np.random.randint(10000, 50000, size=len(date_rng))
+})
+# Optional: Lade zusätzlich den SEATS und berechne LOAD_FACTOR, falls notwendig
+test_df["SEATS"] = test_df["PASSENGERS"] * 1.2
+test_df["LOAD_FACTOR"] = test_df["PASSENGERS"] / test_df["SEATS"]
+
+# Funktion aufrufen
+train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df) 
+
+# Ergebnisse ausgeben
+print("\n--- TEST ---")
+print("Fehlermeldung / Status:", err)
+print("Forecast 2024:\n", fc_2024.head())
+print("Forecast 2025:\n", fc_2025.head())
 
     #Testing
 import matplotlib.pyplot as plt
-'''
-"""
+
+
 # Testdaten nochmal setzen
 forecast_year = 2025
 test_df["DATE"] = pd.to_datetime(test_df["DATE"])
@@ -341,4 +342,3 @@ plt.grid(True)
 plt.show()
 
 """
-'''

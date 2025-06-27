@@ -572,6 +572,8 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
     
     origin, dest = selected_route.split('-')
     filtered = prepare_forecast_data(data, f"{origin} → {dest}", selected_airline)
+    route_key = f"{origin} → {dest}"
+
     
     # Add DATE column if not present
     if 'DATE' not in filtered.columns:
@@ -603,8 +605,8 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         
         
         # SARIMA forecast
-        sarima_2024_df, err_2024 = sarima_forecast(filtered, forecast_year=2024)
-        sarima_2025_df, err_2025 = sarima_forecast(filtered, forecast_year=2025)
+        sarima_2024_df, err_2024 = sarima_forecast(filtered, forecast_year=2024, route=route_key, airline=selected_airline)
+        sarima_2025_df, err_2025 = sarima_forecast(filtered, forecast_year=2025, route=route_key, airline=selected_airline)
 
         # Combine error text
         err = f"{err_2024} | {err_2025}"
