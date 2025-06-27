@@ -674,13 +674,29 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
             mode='lines+markers', name=f'Holt-Winters Forecast Passengers {year_label}',
             line=dict(color='#ff7f0e', dash='dot')
         ))
+        
+        # SARIMA or AutoARIMA Passengers Forecast - Green
+        # Determine forecast source per year
+        source_label_2024 = "SARIMA" if "True" in err_2024 else "AutoARIMA"
+        source_label_2025 = "SARIMA" if "True" in err_2025 else "AutoARIMA"
 
-        # SARIMA Passengers Forecast - Green
-        pax_fig.add_trace(go.Scatter(
-            x=sarima_forecast_df['DATE'], y=sarima_forecast_df['VALUE'],
-            mode='lines+markers', name=f'SARIMA Forecast Passengers {year_label}',
-            line=dict(color='#2ca02c', dash='dashdot')
-        ))
+        # Add seperate forecast traces per year
+        if 2024 in forecast_years and not sarima_2024_df.empty:
+            pax_fig.add_trace(go.Scatter(
+                x=sarima_2024_df['DATE'], y=sarima_2024_df['VALUE'],
+                mode='lines+markers',
+                name=f'{source_label_2024} Forecast Passengers 2024',
+                line=dict(color='#2ca02c', dash='dashdot')
+            ))
+
+        if 2025 in forecast_years and not sarima_2025_df.empty:
+            pax_fig.add_trace(go.Scatter(
+                x=sarima_2025_df['DATE'], y=sarima_2025_df['VALUE'],
+                mode='lines+markers',
+                name=f'{source_label_2025} Forecast Passengers 2025',
+                line=dict(color='#2ca02c', dash='dashdot')
+            ))
+
 
 
     else:

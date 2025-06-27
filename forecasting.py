@@ -233,8 +233,8 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
 
         sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=train_arima, h=periods)
-        # Check if forecast is flat → then fallback
-        if forecast['AutoARIMA'].nunique() <= 1:
+        # Check if forecast is flat → then fallback (nunique() <= 1: all values are exactly the same,std() < 1e-3: values are nearly identical (low variation))
+        if forecast['AutoARIMA'].nunique() <= 1or forecast['AutoARIMA'].std() < 1e-3:
             fallback_triggered = True
             raise Exception("Flat forecast, fallback to SARIMA")
 
