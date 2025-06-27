@@ -116,65 +116,7 @@ def get_forecast_for_year(df, target_year, periods=12):
     return forecast_df
 
 # SARIMAX
-""""
 
-def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
-   
-    # Sort and reset index for consistency
-    df = df.sort_values('DATE').reset_index(drop=True)
-    
-    # Split data into training (before validation), validation, and full training (before prediction)
-    train_initial = df[df['DATE'] < valid_start]
-    valid_2024 = df[(df['DATE'] >= valid_start) & (df['DATE'] < pred_start)]
-    full_train = df[df['DATE'] < pred_start]
-
-    try:
-        # Fit SARIMA model on initial training data
-        model_initial = SARIMAX(train_initial['PASSENGERS'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
-        model_fit_initial = model_initial.fit(disp=False)
-
-        # Forecast validation period (2024)
-        forecast_valid = model_fit_initial.get_forecast(steps=len(valid_2024))
-        forecast_df_2024 = pd.DataFrame({
-            'DATE': valid_2024['DATE'].values,
-            'VALUE': forecast_valid.predicted_mean,
-            'TYPE': 'Forecast 2024'
-        })
-
-        # Calculate validation errors
-        mae = mean_absolute_error(valid_2024['PASSENGERS'], forecast_valid.predicted_mean)
-        rmse = np.sqrt(mean_squared_error(valid_2024['PASSENGERS'], forecast_valid.predicted_mean))
-        error_text = f"📏 MAE (2024): {mae:.0f} passengers | RMSE: {rmse:.0f}"
-
-        # Retrain SARIMA model on full training data including validation period
-        model_final = SARIMAX(full_train['PASSENGERS'], order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
-        model_fit_final = model_final.fit(disp=False)
-
-        # Forecast future period (2025)
-        forecast_2025 = model_fit_final.get_forecast(steps=periods)
-        forecast_df_2025 = pd.DataFrame({
-            'DATE': pd.date_range(start=pred_start, periods=periods, freq='MS'),
-            'VALUE': forecast_2025.predicted_mean,
-            'TYPE': 'Forecast 2025'
-        })
-
-    except Exception as e:
-        # Handle any errors during model fitting or forecasting
-        forecast_df_2024 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
-        forecast_df_2025 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
-        error_text = f"Error during model fitting or forecasting: {e}"
-
-    # Prepare actual training and validation data with unified format
-    real_train = train_initial.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Training data')
-    real_valid = valid_2024.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Actual 2024')
-
-    # Combine all data for plotting or further processing
-    combined_df = pd.concat([real_train, real_valid, forecast_df_2024, forecast_df_2025], ignore_index=True)
-
-    #return combined_df, error_text
-    return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
-
-"""
 '''
 # AutoARIMA
 def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
@@ -280,6 +222,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
     ts = train_df.set_index("DATE")["PASSENGERS"].asfreq("MS")
 
     forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
+    fallback_triggered = False
 
     # Try AutoARIMA first
     try:
@@ -290,14 +233,18 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
 
         sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=train_arima, h=periods)
-        forecast_df = forecast.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
-        forecast_df['TYPE'] = f"Forecast {forecast_year}"
+        # Check if forecast is flat → then fallback
+        if forecast['AutoARIMA'].nunique() <= 1:
+            fallback_triggered = True
+            raise Exception("Flat forecast, fallback to SARIMA")
 
-        model_used = "AutoARIMA"
-        auto_model = sf.models[0]
-        if hasattr(auto_model, 'order') and auto_model.order == (0, 1, 0):
-            raise ValueError("AutoARIMA model too simple, fallback.")
-
+        # Build forecast_df from AutoARIMA
+        forecast_dates = pd.date_range(start=ts.index.max() + pd.offsets.MonthBegin(1), periods=periods, freq="MS")
+        forecast_df = pd.DataFrame({
+            "DATE": forecast_dates,
+            "VALUE": forecast['AutoARIMA'].values,
+            "TYPE": f"Forecast {forecast_year} (AutoARIMA)"
+        })
     except:
         # Try fallback with predefined SARIMA parameters
         try:
@@ -327,7 +274,8 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
         except:
             forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
 
-    return forecast_df, None
+    
+    return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
 
 # Auto ARIMA
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
@@ -350,6 +298,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         return pd.DataFrame(columns=["DATE", "FORECAST_LOAD_FACTOR"])
 
 if __name__ == "__main__":
+    '''
     # Beispielhafte Testdaten generieren
     date_rng = pd.date_range(start="2022-01-01", end="2024-12-01", freq='MS')
     test_df = pd.DataFrame({
@@ -361,7 +310,11 @@ if __name__ == "__main__":
     test_df["LOAD_FACTOR"] = test_df["PASSENGERS"] / test_df["SEATS"]
 
     # Funktion aufrufen
-    train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df)
+    #train, valid, fc_2024, fc_2025, err = sarima_forecast(test_df)
+   
+    train, valid, fc_2024, _, err = sarima_forecast(test_df, forecast_year=2024)
+    _, _, fc_2025, _, _ = sarima_forecast(test_df, forecast_year=2025)
+
 
     # Ergebnisse ausgeben
     print("\n--- TEST ---")
@@ -371,7 +324,7 @@ if __name__ == "__main__":
 
     #Testing
 import matplotlib.pyplot as plt
-
+'''
 """
 # Testdaten nochmal setzen
 forecast_year = 2025

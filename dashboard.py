@@ -603,8 +603,6 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         
         
         # SARIMA forecast
-        #train_df, valid_df, sarima_2024_df, sarima_2025_df, err = sarima_forecast(filtered)
-        
         sarima_2024_df, err_2024 = sarima_forecast(filtered, forecast_year=2024)
         sarima_2025_df, err_2025 = sarima_forecast(filtered, forecast_year=2025)
 
@@ -618,16 +616,21 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         # Filter SARIMA Forecast for forecast_year
         
         sarima_parts = []
-        if 2024 in forecast_years:
-            sarima_parts.append(sarima_2024_df[sarima_2024_df["TYPE"] == "Forecast 2024"])
-        if 2025 in forecast_years:
-            sarima_parts.append(sarima_2025_df[sarima_2025_df["TYPE"] == "Forecast 2025"])
-        sarima_forecast_df = pd.concat(sarima_parts, ignore_index=True)
-          
+        if 2024 in forecast_years and not sarima_2024_df.empty:
+            sarima_parts.append(
+                sarima_2024_df[sarima_2024_df["TYPE"].str.contains("2024", case=False)]
+            )
+
+        if 2025 in forecast_years and not sarima_2025_df.empty:
+            sarima_parts.append(
+                sarima_2025_df[sarima_2025_df["TYPE"].str.contains("2025", case=False)]
+            )
+
+        if sarima_parts:
+            sarima_forecast_df = pd.concat(sarima_parts, ignore_index=True)
+        else:
+            sarima_forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
         
-
-
-
         
         # Sort data before plotting
         actual_df = actual_df.sort_values('DATE')
