@@ -200,24 +200,26 @@ def generate_route_insights(df):
             mae_hw = (mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw))/ np.mean(valid_hw["PASSENGERS"])
         except:
             mae_hw = np.nan
+        #Forecast Error: Sarima/Autoarima
+        route_key = f"{selected_route} | {selected_airline}" if selected_airline else selected_route
+        file_path = f"saved_forecasts/{route_key}_2024.pkl"
 
-        '''
-        # Forecast Error: SARIMA (2024)
-        
         try:
-            train_sarima = route_df[route_df["DATE"] < "2024-01-01"]
-            valid_sarima = route_df[(route_df["DATE"] >= "2024-01-01") & (route_df["DATE"] < "2025-01-01")]
-            ts_sarima = train_sarima.set_index("DATE")["PASSENGERS"]
-            ts_sarima.index.freq = 'MS'
-
-            model_sarima = SARIMAX(ts_sarima, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
-            fit_sarima = model_sarima.fit(disp=False)
-            forecast_sarima = fit_sarima.get_forecast(steps=12).predicted_mean
-
+            with open(file_path, "rb") as f:
+                saved = pickle.load(f)
             
-        except:
-            mae_sarima = np.nan
+            train_data = saved["train_data"]
+            valid_data = saved["valid_data"]
+            forecast_valid = saved["forecast_valid"]
+
+            mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
+
+        except FileNotFoundError:
+            print(f"No saved forecast for {route_key} in 2024.")
+            mae_sarima = None
+
         '''
+       
          # Forecast Error: AutoARIMA (2024)
         try:
             train_auto = route_df[route_df["DATE"] < "2024-01-01"]
@@ -249,7 +251,7 @@ def generate_route_insights(df):
             print(f"⚠️ AutoARIMA failed: {e}")
             mae_sarima = np.nan
         
-        '''
+        
         #Forecast-Error 
         #Ich versuche hier die Fehlerberechnung zu vereinfachen, sodass hier nur die Werte von forecasting.py verwendet werden und nicht neue Vorhersagen gemacht werden...
         # Filter train and validation data (same as in SARIMA)

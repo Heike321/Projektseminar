@@ -234,7 +234,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
         sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=train_arima, h=periods)
         # Check if forecast is flat → then fallback (nunique() <= 1: all values are exactly the same,std() < 1e-3: values are nearly identical (low variation))
-        if forecast['AutoARIMA'].nunique() <= 1or forecast['AutoARIMA'].std() < 1e-3:
+        if forecast['AutoARIMA'].nunique() <= 1 or forecast['AutoARIMA'].std() < 1e-3:
             fallback_triggered = True
             raise Exception("Flat forecast, fallback to SARIMA")
 
@@ -273,6 +273,23 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
             })
         except:
             forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
+
+    if forecast_year == 2024:
+        try:
+            valid_data = df[df['DATE'].dt.year == 2024]
+            train_data = df[df['DATE'].dt.year < 2024]
+            forecast_valid = forecast_df.copy()
+
+            # Nur relevanten Forecast-Fehler-Speicher
+            save_path = f"saved_forecasts/{route_key}_2024.pkl"
+            with open(save_path, "wb") as f:
+                pickle.dump({
+                    "train_data": train_data,
+                    "valid_data": valid_data,
+                    "forecast_valid": forecast_valid
+                }, f)
+        except Exception as e:
+            print("Error saving forecast evaluation data:", e)
 
     
     return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
