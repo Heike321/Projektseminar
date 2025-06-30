@@ -8,7 +8,8 @@ import warnings
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
 from pathlib import Path
-
+import os
+import pickle
 import json
 
 
@@ -215,7 +216,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
 '''
 
 
-def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
+def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, save=False):
     df = df.sort_values('DATE').reset_index(drop=True)
     df["DATE"] = pd.to_datetime(df["DATE"])
     train_df = df[df['DATE'].dt.year < forecast_year].copy()
@@ -274,13 +275,18 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12):
         except:
             forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
 
-    if forecast_year == 2024:
+    if forecast_year == 2024 and save:
         try:
             valid_data = df[df['DATE'].dt.year == 2024]
             train_data = df[df['DATE'].dt.year < 2024]
             forecast_valid = forecast_df.copy()
-
+            
+                
             # Nur relevanten Forecast-Fehler-Speicher
+            route_key = f"{route} | {airline}" if airline else route 
+            folder = "saved_forecasts"
+            if not os.path.exists(folder):
+                os.makedirs(folder)
             save_path = f"saved_forecasts/{route_key}_2024.pkl"
             with open(save_path, "wb") as f:
                 pickle.dump({

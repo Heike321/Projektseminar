@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import pickle
 
 import plotly.express as px
 import plotly.graph_objects as go
@@ -201,7 +202,18 @@ def generate_route_insights(df):
         except:
             mae_hw = np.nan
         #Forecast Error: Sarima/Autoarima
-        route_key = f"{selected_route} | {selected_airline}" if selected_airline else selected_route
+        for route in all_routes:
+            route_df = df[df["ROUTE"] == route]
+            airlines = route_df["UNIQUE_CARRIER_NAME"].unique()
+
+            for airline in airlines:
+                sub_df = route_df[route_df["UNIQUE_CARRIER_NAME"] == airline].sort_values("DATE")
+
+                if sub_df["PASSENGERS"].isnull().any() or len(sub_df) < 24:
+                    continue
+
+                route_key = f"{route} | {airline}"
+        
         file_path = f"saved_forecasts/{route_key}_2024.pkl"
 
         try:
@@ -302,5 +314,35 @@ if __name__ == "__main__":
     df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")
     df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
     
+    '''
+    # One-time forecast save run for 2024
+    from forecasting import sarima_forecast
+
+    all_routes = df["ROUTE"].unique()
+
+    for route in all_routes:
+        route_df = df[df["ROUTE"] == route]
+        airlines = route_df["UNIQUE_CARRIER_NAME"].unique()
+
+        for airline in airlines:
+            sub_df = route_df[route_df["UNIQUE_CARRIER_NAME"] == airline].copy()
+            #Skip if there is insufficient data oer missing values
+            if len(sub_df) < 24 or sub_df["PASSENGERS"].isnull().any():
+                print(f"Not enough data for {route} | {airline}")
+                continue
+
+            print(f"Saving forecast: {route} | {airline}")
+            try:
+                sarima_forecast(
+                    df=sub_df,
+                    forecast_year=2024,
+                    route=route,
+                    airline=airline,
+                    save=True  
+                )
+            except Exception as e:
+                print(f"Error with {route} | {airline}: {e}")
+    '''
+
     generate_route_insights(df)
     

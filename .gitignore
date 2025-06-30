@@ -1,2 +1,7 @@
 __pycache__/
 *.pyc
+saved_forecasts/
+
+
+# Precomputed CSVs
+precomputed_route_insights.csv
