@@ -232,8 +232,19 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
         train_arima['unique_id'] = 'series'
         train_arima = train_arima[['unique_id', 'ds', 'y']]
 
-        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, seasonal=True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=train_arima, h=periods)
+        '''
+        #Leider kriege ich es nicht hin irgendwie auf die Parameter zuzugreifen
+        try:
+            fitted_wrapper = sf.fitted_[0, 0].model_
+            arma = fitted_wrapper.get("arma")  # tuple mit (p, d, q, P, D, Q, m)
+            p, d, q, P, D, Q, m = arma
+            print(f"[INFO] AutoARIMA parameters for {route} | {airline if airline else 'all'}: "
+                f"order=({p},{d},{q}), seasonal_order=({P},{D},{Q},{m})")
+        except Exception as e:
+            print(f"[WARN] Could not extract AutoARIMA parameters: {e}")
+        '''
         # Check if forecast is flat → then fallback (nunique() <= 1: all values are exactly the same,std() < 1e-3: values are nearly identical (low variation))
         if forecast['AutoARIMA'].nunique() <= 1 or forecast['AutoARIMA'].std() < 1e-3:
             fallback_triggered = True
@@ -246,6 +257,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
             "VALUE": forecast['AutoARIMA'].values,
             "TYPE": f"Forecast {forecast_year} (AutoARIMA)"
         })
+        
     except:
         # Try fallback with predefined SARIMA parameters
         try:
@@ -312,7 +324,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         ts.columns = ['ds', 'y']
         ts['unique_id'] = 'series'
         ts = ts[['unique_id', 'ds', 'y']]
-        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
+        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True,seasonal =True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=ts, h=periods)
         forecast_values = forecast['AutoARIMA'].values
         forecast_index = pd.date_range(start=f"{forecast_year}-01-01", periods=periods, freq='MS')
