@@ -131,14 +131,32 @@ def get_outliers_plot(df):
     upper = q3 + 1.5 * iqr
 
     df["OUTLIER"] = (df["PASSENGERS"] < lower) | (df["PASSENGERS"] > upper).copy()
-
+    if df["OUTLIER"].sum() == 0:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="No anomalies identified based on IQR method.",
+            xref="paper", yref="paper",
+            x=0.5, y=0.5,
+            showarrow=False,
+            font=dict(size=16),
+        )
+        fig.update_layout(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            margin=dict(l=20, r=20, t=40, b=20)
+        )
+        return fig
+        
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=df["DATE"], y=df["PASSENGERS"], mode='lines+markers', name='Passengers'))
     fig.add_trace(go.Scatter(x=df[df["OUTLIER"]]["DATE"], y=df[df["OUTLIER"]]["PASSENGERS"],
                              mode='markers', name='Outliers', marker=dict(color='red', size=10)))
     fig.update_layout(title="Outliers in Passengers", xaxis_title="Date", yaxis_title="Passengers")
     return fig
-   
+    
+    
 def generate_route_insights(df):
     
 
