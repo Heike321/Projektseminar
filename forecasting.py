@@ -192,7 +192,7 @@ def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred
 '''
 
 # SARIMAX
-'''
+
 
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df = df.copy()
@@ -213,7 +213,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         "DATE": forecast_index,
         "FORECAST_LOAD_FACTOR": forecast_values
     })
-'''
+
 
 
 def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, save=False):
@@ -232,21 +232,12 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
         train_arima['unique_id'] = 'series'
         train_arima = train_arima[['unique_id', 'ds', 'y']]
 
+        
         sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, seasonal=True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=train_arima, h=periods)
-        '''
-        #Leider kriege ich es nicht hin irgendwie auf die Parameter zuzugreifen
-        try:
-            fitted_wrapper = sf.fitted_[0, 0].model_
-            arma = fitted_wrapper.get("arma")  # tuple mit (p, d, q, P, D, Q, m)
-            p, d, q, P, D, Q, m = arma
-            print(f"[INFO] AutoARIMA parameters for {route} | {airline if airline else 'all'}: "
-                f"order=({p},{d},{q}), seasonal_order=({P},{D},{Q},{m})")
-        except Exception as e:
-            print(f"[WARN] Could not extract AutoARIMA parameters: {e}")
-        '''
+        
         # Check if forecast is flat → then fallback (nunique() <= 1: all values are exactly the same,std() < 1e-3: values are nearly identical (low variation))
-        if forecast['AutoARIMA'].nunique() <= 1 or forecast['AutoARIMA'].std() < 1e-3:
+        if forecast['AutoARIMA'].nunique() <= 3 or forecast['AutoARIMA'].std() < 1e-3:
             fallback_triggered = True
             raise Exception("Flat forecast, fallback to SARIMA")
 
@@ -311,7 +302,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
 
     
     return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
-
+'''
 # Auto ARIMA
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df = df.copy()
@@ -331,7 +322,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
         return pd.DataFrame({"DATE": forecast_index, "FORECAST_LOAD_FACTOR": forecast_values})
     except Exception as e:
         return pd.DataFrame(columns=["DATE", "FORECAST_LOAD_FACTOR"])
-
+'''
 #if __name__ == "__main__":
 
 """
