@@ -256,6 +256,9 @@ app.layout = html.Div(
                                             'borderRadius': '5px',
                                             'cursor': 'pointer'
                                         }),
+                                    html.Span("ℹ️", title="The Combined Score combines several metrics with the following weights: • Trend strength: 0.3 • Seasonality amplitude: -0.1 • MAE Holt error: -0.1 • MAE SARIMA error: -0.15 • Number of passengers: 0.45 • Load factor: 0.5 Positive weights increase the score, negative weights decrease it.")
+
+                                    
                                 ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px'}),
                                 dash_table.DataTable(
                                     id='analysis-table',
