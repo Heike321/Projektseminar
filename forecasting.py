@@ -302,6 +302,8 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
 
     
     return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
+    #return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}", order, seasonal_order
+
 '''
 # Auto ARIMA
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
@@ -368,3 +370,57 @@ plt.grid(True)
 plt.show()
 
 """
+'''
+#Auto Arima Parameter
+if __name__ == "__main__":
+    # 1. Define the path to the input CSV file with historical flight connection data.
+    date_rng = pd.date_range(start="2022-01-01", end="2023-12-01", freq='MS')
+    test_df = pd.DataFrame({
+        "DATE": date_rng,
+        "PASSENGERS": np.random.randint(10000, 50000, size=len(date_rng))
+    })
+    test_df["SEATS"] = test_df["PASSENGERS"] * 1.2
+    test_df["LOAD_FACTOR"] = test_df["PASSENGERS"] / test_df["SEATS"]
+
+    # Testvorhersage
+    forecast_df, msg, order, seasonal_order = sarima_forecast(test_df, forecast_year=2024)
+
+    print("\n--- Forecast 2024 ---")
+    print(msg)
+    print("AutoARIMA order:", order)
+    print("AutoARIMA seasonal_order:", seasonal_order)
+    print(forecast_df.head())
+
+if __name__ == "__main__":
+    # 1. Define the path to the input CSV file with historical flight connection data.
+    file_path = "Data/Grouped_All_Valid_Connections.csv"  # Datei mit Flugverbindungen
+
+    # 2. Choose a specific route and airline to forecast.
+    route = "FRA → JFK"
+    airline = "all"  # oder None bzw. "all" für alle Airlines
+
+    # 3. Load the historical data (only years 2022 and 2023 are considered).
+    data = load_historical_data(file_path)
+
+    # 4. Filter and prepare the data for the selected route and airline.
+    # If airline = "all", data is aggregated monthly across all airlines.
+    prepared = prepare_forecast_data(data, selected_route=route, selected_airline=airline)
+
+    # 5. Run the forecast for the year 2024 using the sarima_forecast function.
+    # Internally, this first tries AutoARIMA and only falls back to manual SARIMA if needed.
+    forecast_df, msg, order, seasonal_order = sarima_forecast(
+        prepared,                # the time series data to forecast on
+        forecast_year=2024,      # the target year for which we want predictions
+        route=route,             # used for saving results and fallback config
+        airline=airline          # used for fallback key
+    )
+
+    # 6. Print the results
+    print("\n--- Forecast 2024 für echte Route ---")
+    print("Route:", route)
+    print("Airline:", airline)
+    print(msg)
+    print("AutoARIMA order:", order)
+    print("AutoARIMA seasonal_order:", seasonal_order)
+    print(forecast_df.head())
+'''
