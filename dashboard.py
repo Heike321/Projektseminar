@@ -894,6 +894,7 @@ def update_kpis(route, airline, year):
     Output("t-button", "style"),
     Output("hw-button", "style"),
     Output("sarima-button", "style"),
+    Output("combined-button", "style"),
     Output('analysis-table', 'style_data_conditional'),
     Input("t-button", "n_clicks"),
     Input("hw-button", "n_clicks"),
@@ -972,6 +973,7 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks, combined
         get_style('trend'),
         get_style('hw'),
         get_style('sarima'),
+        get_style('combined'),
         style_data_conditional
     )
 
