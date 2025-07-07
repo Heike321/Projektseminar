@@ -56,8 +56,12 @@ app.layout = html.Div(
     children=[
 
         
-        html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
-            
+        html.H1("Flight Insights Dashboard ✈️", style={
+            'textAlign': 'center',
+            'color': '#003344',
+            'fontWeight': 'bold',
+            'fontSize': 'clamp(20px, 4vw, 40px)'
+            }),    
         
         #Dropdowns + KPIs 
         html.Div(style={'display': 'flex'}, children=[
@@ -316,8 +320,15 @@ app.layout = html.Div(
                 
         #]),
 
-            # RIGHT SIDE: Top Routes Table
+            # RIGHT SIDE:
             html.Div(style={'flex': 1}, children=[
+                html.H2("🗺️ Explore Routes from Selected Airport", style={
+                    'textAlign': 'center',
+                    'color': '#003344',
+                    'marginBottom': '10px',
+                    'fontSize': 'clamp(12px, 1.4vw, 20px)',
+                    }),
+
                 #html.H2("Route Map", style={'textAlign': 'center'}),
                 #html.Label("Select origin airport:"),
                 dcc.Dropdown(
