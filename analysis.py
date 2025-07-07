@@ -12,11 +12,13 @@ from statsmodels.tsa.statespace.sarimax import SARIMAX
 
 from scipy import stats
 from sklearn.metrics import mean_absolute_error
+from sklearn.preprocessing import MinMaxScaler
 
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
 
 from forecasting import sarima_forecast, forecast_passengers
+
 
  
 
@@ -324,6 +326,48 @@ def generate_route_insights(df):
     df_result.to_csv("Data/precomputed_route_insights.csv", index=False)
     
     return df_result
+
+
+def generate_combined_route_score(top_n=10):
+    
+    # Load precomputed insights
+    insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
+
+    # Load raw route data to compute volume and load factor
+    route_df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
+    route_df = route_df[(route_df["SEATS"] > 0) & (route_df["PASSENGERS"] > 0)].copy()
+    route_df["ROUTE"] = route_df["ORIGIN"] + " → " + route_df["DEST"]
+    route_df["LOAD_FACTOR"] = route_df["PASSENGERS"] / route_df["SEATS"]
+
+    # Aggregate total passengers and load factor per route
+    agg_df = route_df.groupby("ROUTE", as_index=False).agg({
+        "PASSENGERS": "sum",
+        "SEATS": "sum"
+    })
+    agg_df["LOAD_FACTOR"] = agg_df["PASSENGERS"] / agg_df["SEATS"]
+
+    # Merge with insights
+    merged_df = pd.merge(insights_df, agg_df, left_on="route", right_on="ROUTE", how="inner")
+
+    # Normalize selected columns
+    features = ["trend_slope", "season_amp_pct", "mae_holt", "mae_sarima", "PASSENGERS", "LOAD_FACTOR"]
+    scaler = MinMaxScaler()
+    merged_df[[f + "_scaled" for f in features]] = scaler.fit_transform(merged_df[features])
+
+    # Apply weighted scoring
+    weights = {
+        "trend_slope_scaled": 0.3,
+        "season_amp_pct_scaled": -0.1,
+        "mae_holt_scaled": -0.1,
+        "mae_sarima_scaled": -0.15,
+        "PASSENGERS_scaled": 0.45,
+        "LOAD_FACTOR_scaled": 0.5
+    }
+
+    merged_df["score"] = sum(merged_df[col] * weight for col, weight in weights.items())
+
+    # Return top N routes sorted by score
+    return merged_df.sort_values("score", ascending=False).head(top_n)
 
 
 if __name__ == "__main__":

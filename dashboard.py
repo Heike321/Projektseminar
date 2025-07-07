@@ -5,7 +5,7 @@ from scipy import stats
 import json
 import plotly.graph_objects as go
 import plotly.express as px
-from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot , generate_route_insights
+from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot , generate_route_insights, generate_combined_route_score
 from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data, sarima_forecast_load_factor
 from preprocess import iata_to_name
 import warnings
@@ -244,6 +244,18 @@ app.layout = html.Div(
                                             'borderRadius': '5px',
                                             'cursor': 'pointer'
                                         }),
+                                    html.Button("Combined Score",
+                                        id="combined-button",
+                                        n_clicks=0,
+                                        style={
+                                            'backgroundColor': '#1f77b4',
+                                            'color': 'white',
+                                            'border': 'none',
+                                            'padding': '10px 20px',
+                                            'margin': '0 10px',
+                                            'borderRadius': '5px',
+                                            'cursor': 'pointer'
+                                        }),
                                 ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px'}),
                                 dash_table.DataTable(
                                     id='analysis-table',
@@ -253,9 +265,8 @@ app.layout = html.Div(
                                         {"name": "Seasonal Amp.(%)", "id": "season_amp_pct"},
                                         {"name": "Outliers(Residuals)", "id": "outlier_count"},
                                         {"name": "MAE Holt-Winters", "id": "mae_holt"},
-                                       # {"name": "MAE/Trend(HW)", "id": "quotient_holt"},
                                         {"name": "MAE SARIMA", "id": "mae_sarima"},
-                                        #{"name": "MAE/Trend(S)", "id": "quotient_sarima"}
+                                        {"name": "Combined Score", "id": "score","type": "numeric", "format": {"specifier": ".3f"}}
                                     ],
                                     data=top_routes_df.to_dict("records"),
                                     style_table={'overflowX': 'auto'},
@@ -412,19 +423,7 @@ def update_map(selected_origin):
                 showlegend=False,
                 hoverinfo='skip'
             ))
-            '''
-            # Airplane (funktioniert auch noch nicht richtig...)
-            mid_lat = (row["ORIGIN_LAT"] + row["DEST_LAT"]) / 2
-            mid_lon = (row["ORIGIN_LON"] + row["DEST_LON"]) / 2
-            fig.add_trace(go.Scattergeo(
-                lon=[mid_lon],
-                lat=[mid_lat],
-                mode='text',
-                text='✈',
-                textfont=dict(size=20, color='white'),
-                showlegend=False
-            ))
-            '''
+           
             
     # Geo settings (no border, no labels)
     fig.update_geos(
@@ -896,15 +895,17 @@ def update_kpis(route, airline, year):
     Input("t-button", "n_clicks"),
     Input("hw-button", "n_clicks"),
     Input("sarima-button", "n_clicks"),
+    Input("combined-button", "n_clicks"),
     prevent_initial_call=True
 )
 
-def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
+def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks, combined_clicks):
     # Store click counts for all buttons
     clicks = {
         'trend': trend_clicks,
         'hw': hw_clicks,
         'sarima': sarima_clicks,
+        'combined': combined_clicks
     }
 
     # Determine which button was clicked most recently
@@ -919,6 +920,8 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
         sorted_df = top_routes_df.sort_values('mae_holt')
     elif active == 'sarima':
         sorted_df = top_routes_df.sort_values('mae_sarima')
+    elif active == 'combined':
+        sorted_df = generate_combined_route_score(top_n=10)
     else:  # Default to trend sort
         sorted_df = top_routes_df.sort_values('trend_slope', ascending=False)
 
@@ -937,7 +940,8 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
     color_map = {
         'trend': '#9467bd',   # Purple
         'hw': '#ff7f0e',      # Orange
-        'sarima': '#2ca02c'   # Green
+        'sarima': '#2ca02c',   # Green
+        'combined': '#1f77b4'
     }
 
     # Generate button styles dynamically
@@ -949,7 +953,8 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks):
     highlight_col = {
         'trend': 'trend_slope',
         'hw': 'mae_holt',
-        'sarima': 'mae_sarima'
+        'sarima': 'mae_sarima',
+        'combined': 'score'
     }[active]
 
     style_data_conditional = [{
