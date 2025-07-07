@@ -9,6 +9,7 @@ from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot
 from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data, sarima_forecast_load_factor
 from preprocess import iata_to_name
 import warnings
+import datetime
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
@@ -375,7 +376,19 @@ app.layout = html.Div(
 
                 html.Br(),
                 dcc.Graph(id='top-routes-bar'),
-                html.Div(id='top-routes-table')
+                html.Div(id='top-routes-table'),
+
+                html.Div(
+                    f"📅 {datetime.datetime.now().strftime('%d.%m.%Y')} • Created by Melanie Schulz & Heike Leer",
+                    style={
+                        'position': 'absolute',
+                        'fontSize': '14px',
+                        'color': '#000000',
+                        'padding': '10px',
+                        'textAlign': 'right',
+                        'marginTop': '30px'
+                    }
+                )
             ])
         ])
     ]
