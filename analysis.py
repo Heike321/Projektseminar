@@ -250,63 +250,6 @@ def generate_route_insights(df):
             print(f"No saved forecast for {route_key} in 2024.")
             mae_sarima = None
 
-        '''
-       
-         # Forecast Error: AutoARIMA (2024)
-        try:
-            train_auto = route_df[route_df["DATE"] < "2024-01-01"]
-            valid_auto = route_df[(route_df["DATE"] >= "2024-01-01") & (route_df["DATE"] < "2025-01-01")]
-
-            if len(train_auto) < 24 or len(valid_auto) == 0:
-                raise ValueError("Not enough data for AutoARIMA forecast")
-
-            df_train = train_auto[["DATE", "PASSENGERS"]].copy()
-            df_train.columns = ["ds", "y"]
-            df_train["y"] = pd.to_numeric(df_train["y"], errors="coerce")
-            df_train = df_train.dropna(subset=["y"])
-            df_train["unique_id"] = "series"
-            df_train = df_train[["unique_id", "ds", "y"]]
-        
-            # Korrekte Initialisierung
-            sf_model = StatsForecast(models=[AutoARIMA(season_length=12)], freq='MS')
-            forecast_df = sf_model.forecast(df=df_train, h=12)
-        
-
-
-            forecast_values = forecast_df[forecast_df["unique_id"] == "series"]["AutoARIMA"].values
-            forecast_values = forecast_values[:len(valid_auto)]
-            true_values = valid_auto["PASSENGERS"].values[:len(forecast_values)]
-
-            mae_sarima = mean_absolute_error(true_values, forecast_values) / np.mean(true_values)
-
-        except Exception as e:
-            print(f"⚠️ AutoARIMA failed: {e}")
-            mae_sarima = np.nan
-        
-        
-        #Forecast-Error 
-        #Ich versuche hier die Fehlerberechnung zu vereinfachen, sodass hier nur die Werte von forecasting.py verwendet werden und nicht neue Vorhersagen gemacht werden...
-        # Filter train and validation data (same as in SARIMA)
-        train_data = df[df['DATE'].dt.year < valid_year]
-        valid_data = df[df['DATE'].dt.year == valid_year]
-
-        # Holt-Winters Forecast auf Basis train_data
-        forecast_df = forecast_passengers(train_data, periods=len(valid_data))
-
-        # MAE mit valid_data berechnen
-        mae_holt = mean_absolute_error(valid_data['PASSENGERS'], forecast_df['FORECAST_PASSENGERS']) / valid_data['PASSENGERS'].mean()
-
-        # Forecast und Validierungsdaten aus forecasting.py holen
-        train_data, valid_data, forecast_valid, _ = sarima_forecast(route_df, valid_year=valid_year, forecast_year=valid_year+1)
-
-        # MAE berechnen 
-        mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
-        '''
-
-
-
-
-        
         # Collect results
         insights.append({
             "route": route,
