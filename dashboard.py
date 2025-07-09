@@ -368,7 +368,7 @@ app.layout = html.Div(
                 html.Div(id='top-routes-table'),
 
                 html.Div(
-                    f"📅 {datetime.datetime.now().strftime('%d.%m.%Y')} • Created by Melanie Schulz & Heike Leer",
+                    f"📅 {datetime.datetime.now().strftime('%d.%m.%Y')} • Created by Melanie Schulz & Heike Leers",
                     style={
                         'position': 'absolute',
                         'fontSize': '14px',
