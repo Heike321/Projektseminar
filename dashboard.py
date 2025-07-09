@@ -20,17 +20,6 @@ data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].ast
 with open("Data/valid_routes.json") as f:
     route_options = json.load(f)
 
-#Es gibt Flugverbindungen in denen Sitze und Passagiere Null sind
-'''
-def check_zero_stats(df):
-    print("Total rows:", len(df))
-    print("SEATS == 0:", (df["SEATS"] == 0).sum())
-    print("PASSENGERS == 0:", (df["PASSENGERS"] == 0).sum())
-    print("SEATS & PASSENGERS == 0:", ((df["SEATS"] == 0) & (df["PASSENGERS"] == 0)).sum())
-check_zero_stats(data)
-data = data[(data["SEATS"] > 0) & (data["PASSENGERS"] > 0)]
-'''
-
 # Load precomputed route insights and select the top 10 routes with the highest increasing trend
 route_insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
 top_routes_df = route_insights_df.sort_values("trend_slope", ascending=False).head(10)

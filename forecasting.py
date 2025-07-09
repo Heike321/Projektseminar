@@ -118,89 +118,13 @@ def get_forecast_for_year(df, target_year, periods=12):
 
 # SARIMAX
 
-'''
-# AutoARIMA
-def sarima_forecast(df, start_train='2022-01-01', valid_start='2024-01-01', pred_start='2025-01-01', periods=12):
-    # Sort and reset index for consistency
-    df = df.sort_values('DATE').reset_index(drop=True)
-    train_initial = df[df['DATE'] < valid_start]
-    valid_2024 = df[(df['DATE'] >= valid_start) & (df['DATE'] < pred_start)]
-    full_train = df[df['DATE'] < pred_start]
-
-    try:
-        # Forecast validation period (2024)
-        df_valid_train = train_initial[['DATE', 'PASSENGERS']].copy()
-        df_valid_train.columns = ['ds', 'y']
-        df_valid_train['unique_id'] = 'series'
-        df_valid_train = df_valid_train[['unique_id', 'ds', 'y']]
-
-        autoarima_config = AutoARIMA(
-            season_length=12,
-            stepwise=True,  #nicht alle Modellkombinationen ausprobieren sondern heuristischer Suchalgorithmus
-            approximation=False,
-            max_order=15, # summe der parameter nicht über 15 , kein überfitten
-            start_p=1, max_p=3, # 0 ausgeschlossen keine flache Linie
-            start_q=0, max_q=3,
-            max_d=1, # maximal eine differnzierung - verjhindert mehrfache und dass e zu glatt wird
-            start_P=1, max_P=2, # saisonale Muster berücksichtigen
-            start_Q=0, max_Q=2,
-            max_D=1
-        )        
-
-        # Konfiguration anwenden
-        sf_valid = StatsForecast(models=[autoarima_config], freq='MS')
-        #sf_valid = StatsForecast(models=[autoarima_config], freq='MS', trace=True)
-
-        sf_final = StatsForecast(models=[autoarima_config], freq='MS')
-
-        # Forecast für Validierung
-        forecast_valid = sf_valid.forecast(df=df_valid_train, h=len(valid_2024))
-        forecast_df_2024 = forecast_valid.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
-        forecast_df_2024['TYPE'] = 'Forecast 2024'
-
-
-    
-        # sf_valid = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
-        #forecast_valid = sf_valid.forecast(df=df_valid_train, h=len(valid_2024))
-        #forecast_df_2024 = forecast_valid.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
-        #forecast_df_2024['TYPE'] = 'Forecast 2024'
-
-        # Calculate validation errors
-        mae = mean_absolute_error(valid_2024['PASSENGERS'].values, forecast_valid['AutoARIMA'].values[:len(valid_2024)])
-        rmse = np.sqrt(mean_squared_error(valid_2024['PASSENGERS'].values, forecast_valid['AutoARIMA'].values[:len(valid_2024)]))
-        error_text = f"📏 MAE (2024): {mae:.0f} passengers | RMSE: {rmse:.0f}"
-
-        # Forecast future period (2025)
-        df_full_train = full_train[['DATE', 'PASSENGERS']].copy()
-        df_full_train.columns = ['ds', 'y']
-        df_full_train['unique_id'] = 'series'
-        df_full_train = df_full_train[['unique_id', 'ds', 'y']]
-        #sf_final = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, approximation=False, max_order=10)], freq='MS')
-        forecast_2025 = sf_final.forecast(df=df_full_train, h=periods)
-        forecast_df_2025 = forecast_2025.rename(columns={'ds': 'DATE', 'AutoARIMA': 'VALUE'})
-        forecast_df_2025['TYPE'] = 'Forecast 2025'
-
-    except Exception as e:
-        # Handle any errors during model fitting or forecasting
-        forecast_df_2024 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
-        forecast_df_2025 = pd.DataFrame(columns=['DATE', 'VALUE', 'TYPE'])
-        error_text = f"Error during model fitting or forecasting: {e}"
-
-    real_train = train_initial.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Training data')
-    real_valid = valid_2024.rename(columns={'PASSENGERS': 'VALUE'}).assign(TYPE='Actual 2024')
-    return real_train.reset_index(), real_valid.reset_index(), forecast_df_2024, forecast_df_2025, error_text
-'''
-
-# SARIMAX
-
-
 def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df = df.copy()
     df = df.sort_values('DATE')
     df.index = pd.to_datetime(df['DATE'])
     df.index.freq = 'MS'
 
-    # Nur historische Daten vor dem Vorhersagejahr
+    # Only historical data vor dem Vorhersagejahr
     ts = df[df.index.year < forecast_year]['LOAD_FACTOR']
 
     model = SARIMAX(ts, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
