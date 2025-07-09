@@ -271,7 +271,7 @@ def generate_route_insights(df):
     return df_result
 
 
-def generate_combined_route_score(top_n=10):
+def generate_combined_route_score(top_n=10, focus="growth"):
     
     # Load precomputed insights
     insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
@@ -296,16 +296,39 @@ def generate_combined_route_score(top_n=10):
     features = ["trend_slope", "season_amp_pct", "mae_holt", "mae_sarima", "PASSENGERS", "LOAD_FACTOR"]
     scaler = MinMaxScaler()
     merged_df[[f + "_scaled" for f in features]] = scaler.fit_transform(merged_df[features])
+    
+    # Define weights depending on focus
+    if focus == "growth":
+        weights = {
+            "trend_slope_scaled": 0.4,
+            "season_amp_pct_scaled": -0.1,
+            "mae_holt_scaled": -0.1,
+            "mae_sarima_scaled": -0.1,
+            "PASSENGERS_scaled": 0.6,
+            "LOAD_FACTOR_scaled": 0.2
+        }
+    elif focus == "efficiency":
+        weights = {
+            "trend_slope_scaled": 0.1,
+            "season_amp_pct_scaled": -0.1,
+            "mae_holt_scaled": -0.25,
+            "mae_sarima_scaled": -0.25,
+            "PASSENGERS_scaled": 0.2,
+            "LOAD_FACTOR_scaled": 0.6
+        }
+    elif focus == "robustness":
+        weights = {
+            "trend_slope_scaled": 0.1,
+            "season_amp_pct_scaled": -0.3,
+            "mae_holt_scaled": -0.2,
+            "mae_sarima_scaled": -0.2,
+            "PASSENGERS_scaled": 0.2,
+            "LOAD_FACTOR_scaled": 0.5
+        }
 
-    # Apply weighted scoring
-    weights = {
-        "trend_slope_scaled": 0.3,
-        "season_amp_pct_scaled": -0.1,
-        "mae_holt_scaled": -0.1,
-        "mae_sarima_scaled": -0.15,
-        "PASSENGERS_scaled": 0.45,
-        "LOAD_FACTOR_scaled": 0.5
-    }
+    
+
+  
 
     merged_df["score"] = sum(merged_df[col] * weight for col, weight in weights.items())
 

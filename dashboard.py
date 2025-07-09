@@ -201,6 +201,25 @@ app.layout = html.Div(
                             label='Recommendation',
                             children=[
                                 html.H4("Recommed top routes sorted by: "),
+                                html.Div(
+                                    id="focus-container",
+                                    children=[
+                                        html.Label("Strategic Focus for Combined Score:"),
+                                        dcc.Dropdown(
+                                            id="focus-profile",
+                                            options=[
+                                                {"label": "📈 Growth Focus", "value": "growth"},
+                                                {"label": "⚙️ Efficiency Focus", "value": "efficiency"},
+                                                {"label": "🛡️ Robustness Focus", "value": "robustness"}
+                                            ],
+                                            value="growth",
+                                            clearable=False,
+                                            style={'width': '300px'}
+                                        ),
+                                        html.Div(id="focus-description", style={"marginTop": "10px", "fontStyle": "italic", "color": "#555"})
+                                    ],
+                                    style={'display': 'none', 'marginBottom': '20px'}  # initial versteckt
+                                ),
                                 html.Div([
                                     html.Button("Highest Increasing Trend", 
                                         id="t-button", 
@@ -250,10 +269,11 @@ app.layout = html.Div(
                                             'borderRadius': '5px',
                                             'cursor': 'pointer'
                                         }),
-                                    html.Span("ℹ️", title="The Combined Score combines several metrics with the following weights: • Trend strength: 0.3 • Seasonality amplitude: -0.1 • MAE Holt error: -0.1 • MAE SARIMA error: -0.15 • Number of passengers: 0.45 • Load factor: 0.5 Positive weights increase the score, negative weights decrease it.")
-
-                                    
+                                    html.Span("ℹ️", title="The Combined Score combines several metrics with the following weights: • Trend strength: 0.3 • Seasonality amplitude: -0.1 • MAE Holt error: -0.1 • MAE SARIMA error: -0.15 • Number of passengers: 0.45 • Load factor: 0.5 Positive weights increase the score, negative weights decrease it."),
+                                  
                                 ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px'}),
+                                
+                                
                                 dash_table.DataTable(
                                     id='analysis-table',
                                     columns=[
@@ -302,7 +322,7 @@ app.layout = html.Div(
                     }
                 ),
             
-            
+                dcc.Store(id='active-sort-method', data='trend'),
                 dcc.Graph(id='lf-graph'),
                 dcc.Graph(id='passenger-graph')
             ]),
@@ -909,14 +929,13 @@ def update_kpis(route, airline, year):
     Output("sarima-button", "style"),
     Output("combined-button", "style"),
     Output('analysis-table', 'style_data_conditional'),
-    Input("t-button", "n_clicks"),
-    Input("hw-button", "n_clicks"),
-    Input("sarima-button", "n_clicks"),
-    Input("combined-button", "n_clicks"),
+    Input("active-sort-method", "data"),
+    Input("focus-profile", "value"),
     prevent_initial_call=True
 )
 
-def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks, combined_clicks):
+def update_recommendation_table(active, focus):
+    '''
     # Store click counts for all buttons
     clicks = {
         'trend': trend_clicks,
@@ -931,14 +950,14 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks, combined
         active = 'trend'
     else:
         active = max(clicks, key=lambda k: clicks[k] if clicks[k] is not None else -1)
-
+    '''
     # Sort table data based on selected method
     if active == 'hw':
         sorted_df = top_routes_df.sort_values('mae_holt')
     elif active == 'sarima':
         sorted_df = top_routes_df.sort_values('mae_sarima')
     elif active == 'combined':
-        sorted_df = generate_combined_route_score(top_n=10)
+        sorted_df = generate_combined_route_score(top_n=10, focus=focus)
     else:  # Default to trend sort
         sorted_df = top_routes_df.sort_values('trend_slope', ascending=False)
 
@@ -963,16 +982,14 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks, combined
 
     # Generate button styles dynamically
     def get_style(button_name):
-        if active == button_name:
-            return {**base_style, 'backgroundColor': color_map[button_name], 'color': 'black'}
-        return base_style
+        return {**base_style, 'backgroundColor': color_map[button_name], 'color': 'black'} if active == button_name else base_style
     # Highlight the active sort column in light gray
     highlight_col = {
         'trend': 'trend_slope',
         'hw': 'mae_holt',
         'sarima': 'mae_sarima',
         'combined': 'score'
-    }[active]
+    }.get(active, 'trend_slope')
 
     style_data_conditional = [{
         "if": {"column_id": highlight_col},
@@ -990,8 +1007,50 @@ def update_recommendation_table(trend_clicks, hw_clicks, sarima_clicks, combined
         style_data_conditional
     )
 
+@app.callback(
+    Output("focus-description", "children"),
+    Input("focus-profile", "value")
+)
+def update_focus_description(focus):
+    descriptions = {
+        "growth": "Prioritizes routes with increasing trends and high passenger volume.",
+        "efficiency": "Focuses on routes with high load factor and low forecast error.",
+        "robustness": "Emphasizes stable routes with low seasonality and fewer outliers."
+    }
+    return descriptions.get(focus, "")
 
 
+
+@app.callback(
+    Output("focus-container", "style"),
+    Input("combined-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def show_focus_dropdown(n_clicks):
+    if n_clicks and n_clicks > 0:
+        return {'display': 'block', 'marginBottom': '20px'}
+    return {'display': 'none'}
+
+@app.callback(
+    Output("active-sort-method", "data"),
+    Input("t-button", "n_clicks"),
+    Input("hw-button", "n_clicks"),
+    Input("sarima-button", "n_clicks"),
+    Input("combined-button", "n_clicks"),
+    prevent_initial_call=True
+)
+def update_active_sort(trend, hw, sarima, combined):
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        raise dash.exceptions.PreventUpdate
+
+    triggered_id = ctx.triggered[0]["prop_id"].split(".")[0]
+    return {
+        "t-button": "trend",
+        "hw-button": "hw",
+        "sarima-button": "sarima",
+        "combined-button": "combined"
+    }.get(triggered_id, "trend")
 
 # Run app
 if __name__ == '__main__':
