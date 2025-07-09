@@ -9,6 +9,7 @@ from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot
 from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data, sarima_forecast_load_factor
 from preprocess import iata_to_name
 import warnings
+import datetime
 warnings.filterwarnings("ignore", category=FutureWarning)
 
 
@@ -56,8 +57,12 @@ app.layout = html.Div(
     children=[
 
         
-        html.H1("Flight Connection Dashboard ✈️", style={'textAlign': 'center'}),
-            
+        html.H1("Flight Insights Dashboard ✈️", style={
+            'textAlign': 'center',
+            'color': '#003344',
+            'fontWeight': 'bold',
+            'fontSize': 'clamp(20px, 4vw, 40px)'
+            }),    
         
         #Dropdowns + KPIs 
         html.Div(style={'display': 'flex'}, children=[
@@ -139,7 +144,7 @@ app.layout = html.Div(
                         'border': '1.5px solid #888888',
                         'minWidth': '140px',
                         'maxWidth': '160px',
-                        'height': '120px',
+                        'height': '140px',
                         'boxShadow': '0 2px 6px rgba(0,0,0,0.15)'
                     }),
                 ]),
@@ -316,8 +321,15 @@ app.layout = html.Div(
                 
         #]),
 
-            # RIGHT SIDE: Top Routes Table
+            # RIGHT SIDE:
             html.Div(style={'flex': 1}, children=[
+                html.H2("🗺️ Explore Routes from Selected Airport", style={
+                    'textAlign': 'center',
+                    'color': '#003344',
+                    'marginBottom': '10px',
+                    'fontSize': 'clamp(12px, 1.4vw, 20px)',
+                    }),
+
                 #html.H2("Route Map", style={'textAlign': 'center'}),
                 #html.Label("Select origin airport:"),
                 dcc.Dropdown(
@@ -364,7 +376,19 @@ app.layout = html.Div(
 
                 html.Br(),
                 dcc.Graph(id='top-routes-bar'),
-                html.Div(id='top-routes-table')
+                html.Div(id='top-routes-table'),
+
+                html.Div(
+                    f"📅 {datetime.datetime.now().strftime('%d.%m.%Y')} • Created by Melanie Schulz & Heike Leer",
+                    style={
+                        'position': 'absolute',
+                        'fontSize': '14px',
+                        'color': '#000000',
+                        'padding': '10px',
+                        'textAlign': 'right',
+                        'marginTop': '30px'
+                    }
+                )
             ])
         ])
     ]
