@@ -7,11 +7,16 @@ import pandas as pd
 import numpy as np
 
 # Statistics and time series analysis
+from scipy import stats
 from statsmodels.tsa.seasonal import STL
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.seasonal import seasonal_decompose
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_absolute_error
 from sklearn.preprocessing import MinMaxScaler
+
+from statsforecast import StatsForecast
+from statsforecast.models import AutoARIMA
 
 # Visualization
 import plotly.express as px
@@ -22,6 +27,13 @@ from forecasting import sarima_forecast, forecast_passengers
 
 # Load data
 airports_df = pd.read_csv("airports.dat")
+
+
+
+
+
+ 
+
 
 
 def make_safe_filename(s):
