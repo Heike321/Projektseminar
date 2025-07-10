@@ -1,16 +1,40 @@
+# Dash framework for interactive web apps
 import dash
 from dash import dcc, html, Input, Output, dash_table
+
+# Data handling and stats
 import pandas as pd
 from scipy import stats
 import json
+import datetime
+import warnings
+
+# Plotly for visualization
 import plotly.graph_objects as go
 import plotly.express as px
-from analysis import compute_top_routes, get_outliers_plot, get_seasonality_plot, get_trend_plot , generate_route_insights, generate_combined_route_score
-from forecasting import forecast_passengers, forecast_load_factor,get_forecast_for_year, sarima_forecast, prepare_forecast_data, sarima_forecast_load_factor
+
+# Custom analysis and forecasting modules
+from analysis import (
+    compute_top_routes,
+    get_outliers_plot,
+    get_seasonality_plot,
+    get_trend_plot,
+    generate_route_insights,
+    generate_combined_route_score,
+)
+from forecasting import (
+    forecast_passengers,
+    forecast_load_factor,
+    get_forecast_for_year,
+    sarima_forecast,
+    prepare_forecast_data,
+    sarima_forecast_load_factor,
+)
 from preprocess import iata_to_name
-import warnings
-import datetime
+
+# Suppress specific warnings for cleaner output
 warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 
 # Load and preprocess data

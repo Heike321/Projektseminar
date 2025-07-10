@@ -1,27 +1,32 @@
+# Data handling
 import pandas as pd
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-
 import numpy as np
+import json
+import pickle
+import os
+from pathlib import Path
+import re
+
+# Time series models
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-import warnings 
 from statsforecast import StatsForecast
 from statsforecast.models import AutoARIMA
-from pathlib import Path
-import os
-import pickle
-import json
 
+# Metrics
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
+# Suppress warnings for cleaner output
+import warnings
 warnings.filterwarnings("ignore")
-import re
+
 
 def make_safe_filename(s):
     s = s.replace("→", "to")
     s = s.replace("|", "_")
-    s = re.sub(r"\s+", "_", s)  # mehrere Leerzeichen zu einem Unterstrich
-    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  # nur alphanumerische, Unterstrich, Klammern, Bindestrich behalten
-    s = re.sub(r"_+", "_", s)  # mehrere Unterstriche zu einem
+    s = re.sub(r"\s+", "_", s)  
+    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  
+    s = re.sub(r"_+", "_", s)  
     return s.strip("_")
 
 def load_historical_data(file_path):

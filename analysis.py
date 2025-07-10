@@ -1,36 +1,34 @@
-import pandas as pd
-import numpy as np
+# Standard libraries
+import re
 import pickle
 
+# Data processing
+import pandas as pd
+import numpy as np
+
+# Statistics and time series analysis
+from statsmodels.tsa.seasonal import STL
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
+from statsmodels.tsa.statespace.sarimax import SARIMAX
+from sklearn.metrics import mean_absolute_error
+
+# Visualization
 import plotly.express as px
 import plotly.graph_objects as go
 
-from statsmodels.tsa.seasonal import STL
-from statsmodels.tsa.seasonal import seasonal_decompose
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from statsmodels.tsa.statespace.sarimax import SARIMAX
-
-from scipy import stats
-from sklearn.metrics import mean_absolute_error
-from sklearn.preprocessing import MinMaxScaler
-
-from statsforecast import StatsForecast
-from statsforecast.models import AutoARIMA
-
+# Custom modules
 from forecasting import sarima_forecast, forecast_passengers
 
+# Load data
+airports_df = pd.read_csv("airports.dat")
 
- 
-
-airports_df = pd.read_csv("airports.dat")  
-import re
 
 def make_safe_filename(s):
     s = s.replace("→", "to")
     s = s.replace("|", "_")
-    s = re.sub(r"\s+", "_", s)  # mehrere Leerzeichen zu einem Unterstrich
-    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  # nur alphanumerische, Unterstrich, Klammern, Bindestrich behalten
-    s = re.sub(r"_+", "_", s)  # mehrere Unterstriche zu einem
+    s = re.sub(r"\s+", "_", s)  
+    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  
+    s = re.sub(r"_+", "_", s)  
     return s.strip("_")
 
 
@@ -167,143 +165,7 @@ def get_outliers_plot(df):
     fig.update_layout(title="Outliers in Passengers", xaxis_title="Date", yaxis_title="Passengers")
     return fig
     
-'''    
-def generate_route_insights(df):
-    
 
-    insights = []
-
-    df["DATE"] = pd.to_datetime(df["DATE"])
-    df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
-
-    all_routes = df["ROUTE"].unique()
-
-    for route in all_routes:
-        route_df = df[df["ROUTE"] == route].sort_values("DATE")
-
-        # Skip routes with missing values or too little data
-        if route_df["PASSENGERS"].isnull().any() or len(route_df) < 36:
-            continue
-        # STL decomposition
-        
-        ts = route_df.set_index("DATE")["PASSENGERS"]
-        stl = STL(ts, period=12)
-        res = stl.fit()
-
-        # Use only the trend component for slope estimation
-        trend = res.trend.dropna()
-        if len(trend) >= 12:
-            x = np.arange(len(trend))
-            y = trend.values
-            slope, *_ = np.polyfit(x, y, 1)
-        else:
-            slope = 0
-
-
-        # STL decomposition for seasonality and outliers
-        ts = route_df.set_index("DATE")["PASSENGERS"]
-        stl = STL(ts, period=12)
-        res = stl.fit()
-
-        avg_passengers = ts.mean()
-        season_amp = res.seasonal.max() - res.seasonal.min()
-        season_amp_pct = (season_amp / avg_passengers) * 100
-
-        
-        # IQR method to detect outliers in residuals
-        resid = res.resid
-        q1, q3 = np.percentile(resid, [25, 75])
-        iqr = q3 - q1
-        outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
-        
-        # Forecast Error: Holt-Winters (2024) 
-        try:
-            train_hw = route_df[route_df["DATE"].dt.year < 2024]
-            valid_hw = route_df[route_df["DATE"].dt.year == 2024]
-            ts_hw = train_hw.set_index("DATE")["PASSENGERS"]
-            ts_hw.index.freq = 'MS'
-
-            model_hw = ExponentialSmoothing(ts_hw, trend='add', seasonal='add', seasonal_periods=12)
-            fit_hw = model_hw.fit()
-            forecast_hw = fit_hw.forecast(12)
-
-            mae_hw = (mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw))/ np.mean(valid_hw["PASSENGERS"])
-        except:
-            mae_hw = np.nan
-        #Forecast Error: Sarima/Autoarima
-        
-        for route in all_routes:
-            route_df = df[df["ROUTE"] == route]
-            airlines = route_df["UNIQUE_CARRIER_NAME"].unique()
-
-            for airline in airlines:
-                sub_df = route_df[route_df["UNIQUE_CARRIER_NAME"] == airline].sort_values("DATE")
-
-                if sub_df["PASSENGERS"].isnull().any() or len(sub_df) < 24:
-                    continue
-
-                route_key = f"{route} | {airline}"
-        
-        file_path = f"saved_forecasts/{route_key}_2024.pkl"
-
-        try:
-            with open(file_path, "rb") as f:
-                saved = pickle.load(f)
-            
-            train_data = saved["train_data"]
-            valid_data = saved["valid_data"]
-            forecast_valid = saved["forecast_valid"]
-
-            mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
-
-        except FileNotFoundError:
-            print(f"No saved forecast for {route_key} in 2024.")
-            mae_sarima = None
-        
-                # Forecast Error: SARIMA (pro Airline + Aircraft)
-        #mae_sarima =np.nan
-        
-        combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
-
-        for _, row in combinations.iterrows():
-            airline = row["UNIQUE_CARRIER_NAME"]
-            aircraft = row["AIRCRAFT_TYPE"]
-
-            route_key = f"{route} | {airline} | {aircraft}"
-            safe_route_key = route_key.replace("→", "to").replace("|", "_").replace(" ", "_")
-            file_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
-
-            try:
-                with open(file_path, "rb") as f:
-                    saved = pickle.load(f)
-
-                valid_data = saved["valid_data"]
-                forecast_valid = saved["forecast_valid"]
-
-                mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
-                    
-            except FileNotFoundError:
-                print(f"No saved forecast for {safe_route_key}")
-                mae_sarima = np.nan
-        # Collect results
-        insights.append({
-            "route": route,
-            "trend_slope": round(slope, 2),
-            "season_amp_pct": round(season_amp_pct, 1),
-            "outlier_count": int(outliers),
-            "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else np.nan,
-            "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else np.nan,
-        })            
-            
-
-    df_result = pd.DataFrame(insights)
-    df_result = df_result.sort_values("trend_slope", ascending=False).reset_index(drop=True)
-    
-    # Save the insights to CSV for dashboard use
-    df_result.to_csv("Data/precomputed_route_insights.csv", index=False)
-    
-    return df_result
-'''
 def generate_route_insights(df):
     insights = []
 
