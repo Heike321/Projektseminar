@@ -11,6 +11,7 @@ from statsmodels.tsa.seasonal import STL
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from sklearn.metrics import mean_absolute_error
+from sklearn.preprocessing import MinMaxScaler
 
 # Visualization
 import plotly.express as px
@@ -194,23 +195,7 @@ def generate_route_insights(df):
         q1, q3 = np.percentile(resid, [25, 75])
         iqr = q3 - q1
         outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
-
-        # Holt-Winters Forecast
-        try:
-            train_hw = route_df[route_df["DATE"].dt.year < 2024]
-            valid_hw = route_df[route_df["DATE"].dt.year == 2024]
-            ts_hw = train_hw.set_index("DATE")["PASSENGERS"]
-            ts_hw.index.freq = 'MS'
-
-            model_hw = ExponentialSmoothing(ts_hw, trend='add', seasonal='add', seasonal_periods=12)
-            fit_hw = model_hw.fit()
-            forecast_hw = fit_hw.forecast(12)
-
-            mae_hw = mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw) / valid_hw["PASSENGERS"].mean()
-        except:
-            mae_hw = np.nan
-
-        # SARIMA pro Airline & Aircraft
+        
         combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
 
         for _, row in combinations.iterrows():
@@ -220,14 +205,33 @@ def generate_route_insights(df):
             route_key = f"{route} | {airline} | {aircraft}"
             safe_route_key = make_safe_filename(route_key)
             file_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
+            
+            # 
+            subset = route_df[
+                (route_df["UNIQUE_CARRIER_NAME"] == airline) &
+                (route_df["AIRCRAFT_TYPE"] == aircraft)
+            ].sort_values("DATE")
 
+            # Holt-Winters MAE for subset
+            try:
+                train_hw = subset[subset["DATE"].dt.year < 2024]
+                valid_hw = subset[subset["DATE"].dt.year == 2024]
+
+                ts_hw = train_hw.set_index("DATE")["PASSENGERS"]
+                ts_hw.index.freq = 'MS'
+
+                model_hw = ExponentialSmoothing(ts_hw, trend='add', seasonal='add', seasonal_periods=12)
+                fit_hw = model_hw.fit()
+                forecast_hw = fit_hw.forecast(12)
+
+                mae_hw = mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw) / valid_hw["PASSENGERS"].mean()
+            except:
+                mae_hw = np.nan
+        # SARIMA pro Airline & Aircraft
             try:
                 with open(file_path, "rb") as f:
                     saved = pickle.load(f)
-                    
-                    
-
-
+                  
                 valid_data = saved["valid_data"]
                 forecast_valid = saved["forecast_valid"]
                 valid_data = valid_data.set_index("DATE")
