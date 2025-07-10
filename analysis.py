@@ -28,14 +28,6 @@ from forecasting import sarima_forecast, forecast_passengers
 # Load data
 airports_df = pd.read_csv("airports.dat")
 
-
-
-
-
- 
-
-
-
 def make_safe_filename(s):
     s = s.replace("→", "to")
     s = s.replace("|", "_")
@@ -43,7 +35,6 @@ def make_safe_filename(s):
     s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  
     s = re.sub(r"_+", "_", s)  
     return s.strip("_")
-
 
 def compute_top_routes(df, top_n=10):
     # Split connection key to extract origin and destination codes
@@ -182,6 +173,7 @@ def get_outliers_plot(df):
 def generate_route_insights(df):
     insights = []
 
+    # Ensure DATE is datetime and create a ROUTE identifier
     df["DATE"] = pd.to_datetime(df["DATE"])
     df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
 
@@ -189,25 +181,30 @@ def generate_route_insights(df):
 
     for route in all_routes:
         route_df = df[df["ROUTE"] == route].sort_values("DATE")
-
+        # Skip routes with missing values or insufficient history
         if route_df["PASSENGERS"].isnull().any() or len(route_df) < 24:
             continue
 
-        # STL decomposition für Trend & Saisonalität
+        # Apply STL decomposition to extract trend and seasonality
         ts = route_df.set_index("DATE")["PASSENGERS"]
         stl = STL(ts, period=12).fit()
         trend = stl.trend.dropna()
+
+        # Estimate linear trend slope (direction and strength of trend)
         slope = np.polyfit(np.arange(len(trend)), trend.values, 1)[0] if len(trend) >= 12 else 0
 
+        # Calculate average passenger volume and seasonal amplitude as percentage
         avg_passengers = ts.mean()
         season_amp = stl.seasonal.max() - stl.seasonal.min()
         season_amp_pct = (season_amp / avg_passengers) * 100
 
+        # Count outliers in residuals using IQR method
         resid = stl.resid
         q1, q3 = np.percentile(resid, [25, 75])
         iqr = q3 - q1
         outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
         
+        # Loop through unique airline-aircraft combinations for the current route
         combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
 
         for _, row in combinations.iterrows():
@@ -218,13 +215,13 @@ def generate_route_insights(df):
             safe_route_key = make_safe_filename(route_key)
             file_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
             
-            # 
+            # Filter the data for this airline-aircraft pair
             subset = route_df[
                 (route_df["UNIQUE_CARRIER_NAME"] == airline) &
                 (route_df["AIRCRAFT_TYPE"] == aircraft)
             ].sort_values("DATE")
 
-            # Holt-Winters MAE for subset
+            # Compute Holt-Winters forecast MAE for 2024
             try:
                 train_hw = subset[subset["DATE"].dt.year < 2024]
                 valid_hw = subset[subset["DATE"].dt.year == 2024]
@@ -239,7 +236,7 @@ def generate_route_insights(df):
                 mae_hw = mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw) / valid_hw["PASSENGERS"].mean()
             except:
                 mae_hw = np.nan
-        # SARIMA pro Airline & Aircraft
+        #  Load SARIMA forecast from file and compute MAE
             try:
                 with open(file_path, "rb") as f:
                     saved = pickle.load(f)
@@ -259,9 +256,8 @@ def generate_route_insights(df):
                 
             except FileNotFoundError:
                 print(f"No saved forecast for {safe_route_key}")
-                
-
-            # 
+             
+            # Store all computed insights for this route-airline-aircraft
             insights.append({
                 "route": route,
                 "airline": airline,
