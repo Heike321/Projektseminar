@@ -700,7 +700,7 @@ def update_all_graphs(selected_route, selected_airline,  selected_year):
         err = f"{err_2024} | {err_2025}"
 
         sarima_forecast_load_df = pd.concat([
-            sarima_forecast_load_factor(filtered, year, aircraft_type=aircraft_type) for year in forecast_years])
+            sarima_forecast_load_factor(filtered, year) for year in forecast_years])
          
         
         # Filter SARIMA Forecast for forecast_year

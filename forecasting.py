@@ -167,18 +167,18 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
     forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
     fallback_triggered = False
 
-    # Try AutoARIMA first
+    # Try AutoARIMA as the primary forecasting model
     try:
         train_arima = train_df[['DATE', 'PASSENGERS']].copy()
         train_arima.columns = ['ds', 'y']
         train_arima['unique_id'] = 'series'
         train_arima = train_arima[['unique_id', 'ds', 'y']]
 
-        
+        #Initialize and fit AutoARIMA model
         sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True, seasonal=True, approximation=False, max_order=10)], freq='MS')
         forecast = sf.forecast(df=train_arima, h=periods)
         
-        # Check if forecast is flat → then fallback (nunique() <= 1: all values are exactly the same,std() < 1e-3: values are nearly identical (low variation))
+        # Check if forecast is flat → then fallback (std() < 1e-3: values are nearly identical (low variation))
         if forecast['AutoARIMA'].nunique() <= 3 or forecast['AutoARIMA'].std() < 1e-3:
             fallback_triggered = True
             raise Exception("Flat forecast, fallback to SARIMA")
@@ -192,7 +192,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
         })
         
     except:
-        # Try fallback with predefined SARIMA parameters
+        # If AutoARIMA fails, fallback to manually parameterized SARIMA
         try:
             with open("custom_sarima_params.json") as f:
                 param_config = json.load(f)
@@ -208,6 +208,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
             seasonal_order = (1, 1, 1, 12)
 
         try:
+            # Fit SARIMA model and generate forecast
             model = SARIMAX(ts, order=order, seasonal_order=seasonal_order)
             fit = model.fit(disp=False)
             forecast_index = pd.date_range(start=f"{forecast_year}-01-01", periods=periods, freq='MS')
@@ -218,8 +219,9 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
                 "TYPE": f"SARIMA Fallback {forecast_year}"
             })
         except:
+            # In case even SARIMA fails, return an empty DataFrame
             forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
-
+    # If forecast year is 2024 and save=True → store forecast, training and validation data to file
     if forecast_year == 2024 and save:
         try:
             valid_data = df[df['DATE'].dt.year == 2024]
@@ -227,12 +229,13 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
             forecast_valid = forecast_df.copy()
             
    
-            # Nur relevanten Forecast-Fehler-Speicher
+            # Create a filename-safe key for the route/airline/aircraft combination
             route_key = f"{route} | {airline}| {aircraft_type}" if airline else route 
             safe_route_key = make_safe_filename(route_key)
             folder = "saved_forecasts"
             if not os.path.exists(folder):
                 os.makedirs(folder)
+                
             save_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
             with open(save_path, "wb") as f:
                 pickle.dump({
@@ -246,27 +249,8 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
     
     return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
     
-'''
-# Auto ARIMA
-def sarima_forecast_load_factor(df, forecast_year, periods=12):
-    df = df.copy()
-    df = df.sort_values('DATE')
-    df.index = pd.to_datetime(df['DATE'])
-    df.index.freq = 'MS'
-    try:
-        ts = df[df.index.year < forecast_year][['LOAD_FACTOR']].copy()
-        ts = ts.reset_index()
-        ts.columns = ['ds', 'y']
-        ts['unique_id'] = 'series'
-        ts = ts[['unique_id', 'ds', 'y']]
-        sf = StatsForecast(models=[AutoARIMA(season_length=12, stepwise=True,seasonal =True, approximation=False, max_order=10)], freq='MS')
-        forecast = sf.forecast(df=ts, h=periods)
-        forecast_values = forecast['AutoARIMA'].values
-        forecast_index = pd.date_range(start=f"{forecast_year}-01-01", periods=periods, freq='MS')
-        return pd.DataFrame({"DATE": forecast_index, "FORECAST_LOAD_FACTOR": forecast_values})
-    except Exception as e:
-        return pd.DataFrame(columns=["DATE", "FORECAST_LOAD_FACTOR"])
-'''
+
+
 #if __name__ == "__main__":
 
 """
