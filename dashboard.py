@@ -498,14 +498,32 @@ def update_map(selected_origin):
 def update_airline_options(selected_route):
     if not selected_route:
         return [], "all"
-
+    
+    # Split route string into origin and destination
     origin, dest = selected_route.split('-')
+
+    # Filter dataset for the selected route
     filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
-    airlines = sorted(filtered["UNIQUE_CARRIER_NAME"].dropna().unique())
 
-    options = [{"label": airline, "value": airline} for airline in airlines]
-    options.append({"label": "All Airlines", "value": "all"})
+    # Create combined label: Airline Name + Aircraft Type
+    filtered["label"] = (
+        filtered["UNIQUE_CARRIER_NAME"] + " (" + filtered["AIRCRAFT_TYPE"].astype(str) + ")"
+    )
+   
+    filtered["value"] = (
+        filtered["UNIQUE_CARRIER_NAME"] + "_" + filtered["AIRCRAFT_TYPE"].astype(str)
+    )
 
+    # Drop duplicates to get unique airline-aircraft combinations
+    unique_labels = filtered[["label", "value"]].drop_duplicates()
+
+    # Create dropdown options with label (airline + aircraft) and value (airline only)
+    #options = [{"label": row["label"], "value": row["UNIQUE_CARRIER_NAME"]} for _, row in unique_labels.iterrows()]
+    options = [{"label": row["label"], "value": row["value"]} for _, row in unique_labels.iterrows()]
+
+    # Add "All Airlines" option
+    options.append({"label": "All Airlines (Aircraft Type)", "value": "all"})
+    
     return options, "all"
 
 # Callback: Update top 10 routes table
@@ -593,7 +611,7 @@ def update_top_routes_visuals(selected_year, selected_month):
     Input('airline-selector', 'value'),
     Input('year-selector', 'value')
 )
-def update_all_graphs(selected_route, selected_airline, selected_year):
+def update_all_graphs(selected_route, selected_airline,  selected_year):
     # Initial empty figures
     trend_fig = no_forecast_figure("No forecast available!")
     seasonality_fig = no_forecast_figure("No forecast available!")
@@ -604,12 +622,23 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
     # Return early if no route selected
     if not selected_route:
         return trend_fig, seasonality_fig, outliers_fig, lf_fig, pax_fig
-    
-    origin, dest = selected_route.split('-')
-    filtered = prepare_forecast_data(data, f"{origin} → {dest}", selected_airline)
-    route_key = f"{origin} → {dest}"
+    #airline_name, aircraft_type = selected_airline.strip().rsplit(" (", 1)
 
+    if selected_airline == "all":
+        airline_name = None
+        aircraft_type = None
+    else:
+        if "_" not in selected_airline:
+            raise ValueError(f"Invalid airline format: {selected_airline}")
+        airline_name, aircraft_type = selected_airline.split("_", 1)
     
+    #aircraft_type = aircraft_type.rstrip(")")
+    origin, dest = selected_route.split('-')
+
+    route_key = f"{origin} → {dest}"
+    filtered = prepare_forecast_data(data, route_key, selected_airline if selected_airline != "all" else None)
+    
+   
     # Add DATE column if not present
     if 'DATE' not in filtered.columns:
         filtered['DATE'] = pd.to_datetime(filtered['YEAR'].astype(str) + '-' + 
@@ -640,14 +669,14 @@ def update_all_graphs(selected_route, selected_airline, selected_year):
         
         
         # SARIMA forecast
-        sarima_2024_df, err_2024 = sarima_forecast(filtered, forecast_year=2024, route=route_key, airline=selected_airline)
-        sarima_2025_df, err_2025 = sarima_forecast(filtered, forecast_year=2025, route=route_key, airline=selected_airline)
+        sarima_2024_df, err_2024 = sarima_forecast(filtered, forecast_year=2024, route=route_key, airline=airline_name, aircraft_type=aircraft_type)
+        sarima_2025_df, err_2025 = sarima_forecast(filtered, forecast_year=2025, route=route_key, airline=airline_name, aircraft_type=aircraft_type)
 
         # Combine error text
         err = f"{err_2024} | {err_2025}"
 
         sarima_forecast_load_df = pd.concat([
-            sarima_forecast_load_factor(filtered, year) for year in forecast_years])
+            sarima_forecast_load_factor(filtered, year, aircraft_type=aircraft_type) for year in forecast_years])
          
         
         # Filter SARIMA Forecast for forecast_year
@@ -864,9 +893,9 @@ def update_kpis(route, airline, year):
 
     origin, dest = route.split('-')
     df = data[(data['ORIGIN'] == origin) & (data['DEST'] == dest)].copy()
-
     if airline != "all":
-        df = df[df['UNIQUE_CARRIER_NAME'] == airline]
+        carrier_name, aircraft_type = airline.rsplit('_', 1)
+        df = df[(df['UNIQUE_CARRIER_NAME'] == carrier_name) & (df['AIRCRAFT_TYPE'].astype(str) == aircraft_type)]
 
     if year != "all" and isinstance(year, int):
         df = df[df['YEAR'] == year]
@@ -935,22 +964,7 @@ def update_kpis(route, airline, year):
 )
 
 def update_recommendation_table(active, focus):
-    '''
-    # Store click counts for all buttons
-    clicks = {
-        'trend': trend_clicks,
-        'hw': hw_clicks,
-        'sarima': sarima_clicks,
-        'combined': combined_clicks
-    }
-
-    # Determine which button was clicked most recently
-    # If counts are equal or None, fallback to 'trend'
-    if all(c in [None, 0] for c in clicks.values()):
-        active = 'trend'
-    else:
-        active = max(clicks, key=lambda k: clicks[k] if clicks[k] is not None else -1)
-    '''
+    
     # Sort table data based on selected method
     if active == 'hw':
         sorted_df = top_routes_df.sort_values('mae_holt')

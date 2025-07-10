@@ -23,6 +23,15 @@ from forecasting import sarima_forecast, forecast_passengers
  
 
 airports_df = pd.read_csv("airports.dat")  
+import re
+
+def make_safe_filename(s):
+    s = s.replace("→", "to")
+    s = s.replace("|", "_")
+    s = re.sub(r"\s+", "_", s)  # mehrere Leerzeichen zu einem Unterstrich
+    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  # nur alphanumerische, Unterstrich, Klammern, Bindestrich behalten
+    s = re.sub(r"_+", "_", s)  # mehrere Unterstriche zu einem
+    return s.strip("_")
 
 
 def compute_top_routes(df, top_n=10):
@@ -158,7 +167,7 @@ def get_outliers_plot(df):
     fig.update_layout(title="Outliers in Passengers", xaxis_title="Date", yaxis_title="Passengers")
     return fig
     
-    
+'''    
 def generate_route_insights(df):
     
 
@@ -222,6 +231,7 @@ def generate_route_insights(df):
         except:
             mae_hw = np.nan
         #Forecast Error: Sarima/Autoarima
+        
         for route in all_routes:
             route_df = df[df["ROUTE"] == route]
             airlines = route_df["UNIQUE_CARRIER_NAME"].unique()
@@ -249,7 +259,32 @@ def generate_route_insights(df):
         except FileNotFoundError:
             print(f"No saved forecast for {route_key} in 2024.")
             mae_sarima = None
+        
+                # Forecast Error: SARIMA (pro Airline + Aircraft)
+        #mae_sarima =np.nan
+        
+        combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
 
+        for _, row in combinations.iterrows():
+            airline = row["UNIQUE_CARRIER_NAME"]
+            aircraft = row["AIRCRAFT_TYPE"]
+
+            route_key = f"{route} | {airline} | {aircraft}"
+            safe_route_key = route_key.replace("→", "to").replace("|", "_").replace(" ", "_")
+            file_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
+
+            try:
+                with open(file_path, "rb") as f:
+                    saved = pickle.load(f)
+
+                valid_data = saved["valid_data"]
+                forecast_valid = saved["forecast_valid"]
+
+                mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
+                    
+            except FileNotFoundError:
+                print(f"No saved forecast for {safe_route_key}")
+                mae_sarima = np.nan
         # Collect results
         insights.append({
             "route": route,
@@ -258,9 +293,8 @@ def generate_route_insights(df):
             "outlier_count": int(outliers),
             "mae_holt": round(mae_hw, 1) if not np.isnan(mae_hw) else np.nan,
             "mae_sarima": round(mae_sarima, 1) if not np.isnan(mae_sarima) else np.nan,
-            #"quotient_holt": round(mae_hw / slope, 3) if (not np.isnan(mae_hw) and slope != 0) else np.nan,
-            #"quotient_sarima": round(mae_sarima / slope, 3) if (not np.isnan(mae_sarima) and slope != 0) else np.nan
-        })
+        })            
+            
 
     df_result = pd.DataFrame(insights)
     df_result = df_result.sort_values("trend_slope", ascending=False).reset_index(drop=True)
@@ -268,6 +302,103 @@ def generate_route_insights(df):
     # Save the insights to CSV for dashboard use
     df_result.to_csv("Data/precomputed_route_insights.csv", index=False)
     
+    return df_result
+'''
+def generate_route_insights(df):
+    insights = []
+
+    df["DATE"] = pd.to_datetime(df["DATE"])
+    df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
+
+    all_routes = df["ROUTE"].unique()
+
+    for route in all_routes:
+        route_df = df[df["ROUTE"] == route].sort_values("DATE")
+
+        if route_df["PASSENGERS"].isnull().any() or len(route_df) < 24:
+            continue
+
+        # STL decomposition für Trend & Saisonalität
+        ts = route_df.set_index("DATE")["PASSENGERS"]
+        stl = STL(ts, period=12).fit()
+        trend = stl.trend.dropna()
+        slope = np.polyfit(np.arange(len(trend)), trend.values, 1)[0] if len(trend) >= 12 else 0
+
+        avg_passengers = ts.mean()
+        season_amp = stl.seasonal.max() - stl.seasonal.min()
+        season_amp_pct = (season_amp / avg_passengers) * 100
+
+        resid = stl.resid
+        q1, q3 = np.percentile(resid, [25, 75])
+        iqr = q3 - q1
+        outliers = ((resid < (q1 - 1.5 * iqr)) | (resid > (q3 + 1.5 * iqr))).sum()
+
+        # Holt-Winters Forecast
+        try:
+            train_hw = route_df[route_df["DATE"].dt.year < 2024]
+            valid_hw = route_df[route_df["DATE"].dt.year == 2024]
+            ts_hw = train_hw.set_index("DATE")["PASSENGERS"]
+            ts_hw.index.freq = 'MS'
+
+            model_hw = ExponentialSmoothing(ts_hw, trend='add', seasonal='add', seasonal_periods=12)
+            fit_hw = model_hw.fit()
+            forecast_hw = fit_hw.forecast(12)
+
+            mae_hw = mean_absolute_error(valid_hw["PASSENGERS"], forecast_hw) / valid_hw["PASSENGERS"].mean()
+        except:
+            mae_hw = np.nan
+
+        # SARIMA pro Airline & Aircraft
+        combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
+
+        for _, row in combinations.iterrows():
+            airline = row["UNIQUE_CARRIER_NAME"]
+            aircraft = row["AIRCRAFT_TYPE"]
+
+            route_key = f"{route} | {airline} | {aircraft}"
+            safe_route_key = make_safe_filename(route_key)
+            file_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
+
+            try:
+                with open(file_path, "rb") as f:
+                    saved = pickle.load(f)
+                    
+                    
+
+
+                valid_data = saved["valid_data"]
+                forecast_valid = saved["forecast_valid"]
+                valid_data = valid_data.set_index("DATE")
+                forecast_valid = forecast_valid.set_index("DATE")
+                
+                try:
+                    mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
+                    print(f"MAE SARIMA: {mae_sarima}")
+                except Exception as e:
+                    print(f"Error computing MAE SARIMA: {e}")
+                    mae_sarima = np.nan
+               
+                
+            except FileNotFoundError:
+                print(f"No saved forecast for {safe_route_key}")
+                
+
+            # 
+            insights.append({
+                "route": route,
+                "airline": airline,
+                "aircraft": aircraft,
+                "trend_slope": round(slope, 2),
+                "season_amp_pct": round(season_amp_pct, 1),
+                "outlier_count": int(outliers),
+                "mae_holt": round(mae_hw, 2) if not np.isnan(mae_hw) else np.nan,
+                "mae_sarima": round(mae_sarima, 2) if not np.isnan(mae_sarima) else np.nan,
+            })
+
+    df_result = pd.DataFrame(insights)
+    df_result = df_result.sort_values("mae_sarima", ascending=True).reset_index(drop=True)
+    df_result.to_csv("Data/precomputed_route_insights.csv", index=False)
+
     return df_result
 
 
@@ -342,6 +473,7 @@ if __name__ == "__main__":
     df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")
     df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
     
+    
     '''
     # One-time forecast save run for 2024
     from forecasting import sarima_forecast
@@ -350,27 +482,38 @@ if __name__ == "__main__":
 
     for route in all_routes:
         route_df = df[df["ROUTE"] == route]
-        airlines = route_df["UNIQUE_CARRIER_NAME"].unique()
+        
+        # Airline & Aircraft combinations
+        combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
 
-        for airline in airlines:
-            sub_df = route_df[route_df["UNIQUE_CARRIER_NAME"] == airline].copy()
-            #Skip if there is insufficient data oer missing values
+        for _, row in combinations.iterrows():
+            airline = row["UNIQUE_CARRIER_NAME"]
+            aircraft = row["AIRCRAFT_TYPE"]
+
+            sub_df = route_df[
+                (route_df["UNIQUE_CARRIER_NAME"] == airline) &
+                (route_df["AIRCRAFT_TYPE"] == aircraft)
+            ].copy()
+
+            # Skip if there is insufficient data or missing passengers
             if len(sub_df) < 24 or sub_df["PASSENGERS"].isnull().any():
-                print(f"Not enough data for {route} | {airline}")
+                print(f"Not enough data for {route} | {airline} | {aircraft}")
                 continue
 
-            print(f"Saving forecast: {route} | {airline}")
+            print(f"Saving forecast: {route} | {airline} | {aircraft}")
             try:
                 sarima_forecast(
                     df=sub_df,
                     forecast_year=2024,
                     route=route,
                     airline=airline,
+                    aircraft_type=aircraft, 
                     save=True  
                 )
             except Exception as e:
-                print(f"Error with {route} | {airline}: {e}")
+                print(f"Error with {route} | {airline} | {aircraft}: {e}")
     '''
-
+    
     generate_route_insights(df)
+    
     

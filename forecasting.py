@@ -14,6 +14,15 @@ import json
 
 
 warnings.filterwarnings("ignore")
+import re
+
+def make_safe_filename(s):
+    s = s.replace("→", "to")
+    s = s.replace("|", "_")
+    s = re.sub(r"\s+", "_", s)  # mehrere Leerzeichen zu einem Unterstrich
+    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  # nur alphanumerische, Unterstrich, Klammern, Bindestrich behalten
+    s = re.sub(r"_+", "_", s)  # mehrere Unterstriche zu einem
+    return s.strip("_")
 
 def load_historical_data(file_path):
     #Load combined CSV and filter for historical years (2022 and 2023).
@@ -46,9 +55,12 @@ def prepare_forecast_data(data, selected_route, selected_airline):
 
         return df
     
-    # If an airline is explicitly selected
-    df = df[df["UNIQUE_CARRIER_NAME"] == selected_airline]
-
+    if "_" in selected_airline:
+        carrier_code, aircraft_type = selected_airline.split("_")
+        df = df[
+            (df["UNIQUE_CARRIER_NAME"] == carrier_code)
+            & (df["AIRCRAFT_TYPE"].astype(str) == aircraft_type)
+        ]
     if df.empty:
         raise ValueError(f"No data for airline '{selected_airline}' on this route.")
 
@@ -82,6 +94,7 @@ def forecast_passengers(df, periods=12):
     df = df.sort_values("DATE")
     df = df.set_index("DATE")
     df.index.freq = 'MS'
+    
 
     ts = df["PASSENGERS"]
 
@@ -140,7 +153,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
 
 
 
-def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, save=False):
+def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=None, periods=12, save=False):
     df = df.sort_values('DATE').reset_index(drop=True)
     df["DATE"] = pd.to_datetime(df["DATE"])
     train_df = df[df['DATE'].dt.year < forecast_year].copy()
@@ -208,13 +221,14 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
             train_data = df[df['DATE'].dt.year < 2024]
             forecast_valid = forecast_df.copy()
             
-                
+   
             # Nur relevanten Forecast-Fehler-Speicher
-            route_key = f"{route} | {airline}" if airline else route 
+            route_key = f"{route} | {airline}| {aircraft_type}" if airline else route 
+            safe_route_key = make_safe_filename(route_key)
             folder = "saved_forecasts"
             if not os.path.exists(folder):
                 os.makedirs(folder)
-            save_path = f"saved_forecasts/{route_key}_2024.pkl"
+            save_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
             with open(save_path, "wb") as f:
                 pickle.dump({
                     "train_data": train_data,
@@ -226,8 +240,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None, periods=12, sav
 
     
     return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
-    #return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}", order, seasonal_order
-
+    
 '''
 # Auto ARIMA
 def sarima_forecast_load_factor(df, forecast_year, periods=12):

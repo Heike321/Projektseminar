@@ -49,19 +49,20 @@ def create_sarima_param_file(df, routes, output_file="custom_sarima_params.json"
     P = D = Q = range(0, 2)
     s = 12  # monthly seasonality
 
-    # Get unique route–airline pairs to evaluate separately
-    route_airline_pairs = (
-        df[df["ROUTE"].isin(routes)][["ROUTE", "UNIQUE_CARRIER_NAME"]]
+    # Get unique route–airline triples to evaluate separately
+    route_airline_aircraft_triples = (
+        df[df["ROUTE"].isin(routes)][["ROUTE", "UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]]
+        .dropna()
         .drop_duplicates()
         .values
         .tolist()
     )
 
-    print(f"Generating SARIMA parameters for {len(route_airline_pairs)} route–airline pairs...")
+    print(f"Generating SARIMA parameters for {len(route_airline_aircraft_triples)} route–airline-aircraft-triples...")
     start = time.time()
 
-    for idx, (route, airline) in enumerate(route_airline_pairs):
-        sub_df = df[(df["ROUTE"] == route) & (df["UNIQUE_CARRIER_NAME"] == airline)]
+    for idx, (route, airline, aircraft) in enumerate(route_airline_aircraft_triples):
+        sub_df = df[(df["ROUTE"] == route) & (df["UNIQUE_CARRIER_NAME"] == airline) & (df["AIRCRAFT_TYPE"] == aircraft)]
         if sub_df.shape[0] < 18:
             continue  # not enough data points
 
@@ -73,13 +74,13 @@ def create_sarima_param_file(df, routes, output_file="custom_sarima_params.json"
             .asfreq("MS")
         )
 
-        key = f"{route} | {airline}"  # use route + airline as key
+        key = f"{route} | {airline} | {aircraft}"  # use route + airline as key
         best = get_best_sarima(ts, p, d, q, P, D, Q, s)
         if best:
             config[key] = best
 
         if idx % 10 == 0:
-            print(f"  ⏳ {idx}/{len(route_airline_pairs)} processed – {time.time() - start:.1f}s elapsed")
+            print(f"  ⏳ {idx}/{len(route_airline_aircraft_triples)} processed – {time.time() - start:.1f}s elapsed")
 
     print("Generating aggregated SARIMA parameters per route (across airlines)...")
 
