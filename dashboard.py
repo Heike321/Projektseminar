@@ -293,7 +293,7 @@ app.layout = html.Div(
                                             'borderRadius': '5px',
                                             'cursor': 'pointer'
                                         }),
-                                    html.Span("ℹ️", title="The Combined Score combines several metrics with the following weights: • Trend strength: 0.3 • Seasonality amplitude: -0.1 • MAE Holt error: -0.1 • MAE SARIMA error: -0.15 • Number of passengers: 0.45 • Load factor: 0.5 Positive weights increase the score, negative weights decrease it."),
+                                    html.Span("ℹ️", title="The Combined Score combines several metrics (Trend strength, Seasonality amplitude, MAE Holt error, MAE SARIMA error, Number of passengers, Load factor). Positive weights increase the score, negative weights decrease it."),
                                   
                                 ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px'}),
                                 
@@ -302,6 +302,8 @@ app.layout = html.Div(
                                     id='analysis-table',
                                     columns=[
                                         {"name": "Route", "id": "route"},
+                                        {"name": "Airline", "id": "airline"},
+                                        {"name": "Aircraft-Type", "id": "aircraft"},
                                         {"name": "Trend ↑", "id": "trend_slope"},
                                         {"name": "Seasonal Amp.(%)", "id": "season_amp_pct"},
                                         {"name": "Outliers(Residuals)", "id": "outlier_count"},

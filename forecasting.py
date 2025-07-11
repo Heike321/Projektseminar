@@ -142,7 +142,7 @@ def sarima_forecast_load_factor(df, forecast_year, periods=12):
     df.index = pd.to_datetime(df['DATE'])
     df.index.freq = 'MS'
 
-    # Only historical data vor dem Vorhersagejahr
+    # Only historical data before the forecast year
     ts = df[df.index.year < forecast_year]['LOAD_FACTOR']
 
     model = SARIMAX(ts, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12))
@@ -196,10 +196,12 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
         try:
             with open("custom_sarima_params.json") as f:
                 param_config = json.load(f)
-            key = f"{route} | {airline}" if airline else route
-            if key in param_config:
-                order = tuple(param_config[key]["order"])
-                seasonal_order = tuple(param_config[key]["seasonal_order"])
+            #key = f"{route} | {airline}" if airline else route
+            key = f"{route} | {airline}| {aircraft_type}" if airline else route 
+            safe_key = make_safe_filename(key)
+            if safe_key in param_config:
+                order = tuple(param_config[safe_key]["order"])
+                seasonal_order = tuple(param_config[safe_key]["seasonal_order"])
             else:
                 order = (1, 1, 1)
                 seasonal_order = (1, 1, 1, 12)
@@ -221,6 +223,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
         except:
             # In case even SARIMA fails, return an empty DataFrame
             forecast_df = pd.DataFrame(columns=["DATE", "VALUE", "TYPE"])
+
     # If forecast year is 2024 and save=True → store forecast, training and validation data to file
     if forecast_year == 2024 and save:
         try:

@@ -248,7 +248,7 @@ def generate_route_insights(df):
                 
                 try:
                     mae_sarima = mean_absolute_error(valid_data["PASSENGERS"], forecast_valid["VALUE"]) / valid_data["PASSENGERS"].mean()
-                    print(f"MAE SARIMA: {mae_sarima}")
+                    #print(f"MAE SARIMA: {mae_sarima}")
                 except Exception as e:
                     print(f"Error computing MAE SARIMA: {e}")
                     mae_sarima = np.nan
@@ -369,6 +369,10 @@ if __name__ == "__main__":
                 (route_df["AIRCRAFT_TYPE"] == aircraft)
             ].copy()
 
+            # Skip if the subset is empty or has no 2024 data
+            if sub_df.empty or sub_df[sub_df["DATE"].dt.year == 2024].empty:
+                continue
+
             # Skip if there is insufficient data or missing passengers
             if len(sub_df) < 24 or sub_df["PASSENGERS"].isnull().any():
                 print(f"Not enough data for {route} | {airline} | {aircraft}")
@@ -386,8 +390,8 @@ if __name__ == "__main__":
                 )
             except Exception as e:
                 print(f"Error with {route} | {airline} | {aircraft}: {e}")
-    '''
     
+    '''
     generate_route_insights(df)
     
     

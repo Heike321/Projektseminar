@@ -2,8 +2,15 @@ import pandas as pd
 import json
 import itertools
 import time
+import re
 from statsmodels.tsa.statespace.sarimax import SARIMAX
-
+def make_safe_filename(s):
+    s = s.replace("→", "to")
+    s = s.replace("|", "_")
+    s = re.sub(r"\s+", "_", s)  
+    s = re.sub(r"[^a-zA-Z0-9_\(\)\-]", "", s)  
+    s = re.sub(r"_+", "_", s)  
+    return s.strip("_")
 
 def get_best_sarima(ts, p, d, q, P, D, Q, s):
     #Performs grid search over SARIMA parameters to find the best configuration (based on AIC).
@@ -75,9 +82,10 @@ def create_sarima_param_file(df, routes, output_file="custom_sarima_params.json"
         )
 
         key = f"{route} | {airline} | {aircraft}"  # use route + airline as key
+        safe_key = make_safe_filename(key)
         best = get_best_sarima(ts, p, d, q, P, D, Q, s)
         if best:
-            config[key] = best
+            config[safe_key] = best
 
         if idx % 10 == 0:
             print(f"  ⏳ {idx}/{len(route_airline_aircraft_triples)} processed – {time.time() - start:.1f}s elapsed")
