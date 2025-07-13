@@ -58,7 +58,6 @@ app.title = "Flight Dashboard"
 
 # App layout 
 app.layout = html.Div(
-    #'backgroundColor': '#111111'black
     style={
     'backgroundImage': 'linear-gradient(to bottom right,#e0f7fa, #0288d1)',
     'color': '#003344',
@@ -69,7 +68,6 @@ app.layout = html.Div(
 
     children=[
 
-        
         html.H1("Flight Insights Dashboard ✈️", style={
             'textAlign': 'center',
             'color': '#003344',
@@ -108,10 +106,10 @@ app.layout = html.Div(
                         ], style={'marginBottom': '10px'}),  
 
                         # Airline and Year dropdowns
-                        html.Div(style={'display': 'flex'}, children=[
+                        html.Div(style={'display': 'flex', 'alignItems': 'flex-start'}, children=[
                             html.Div([
                                 html.Label("Select airline:"),
-                                html.Span(" ⓘ", title="The Unique Carrier Entity is shown in parentheses only if an airline operates under multiple different carrier entities (e.g., subsidiaries or branches). Otherwise, it is not displayed.."),
+                                html.Span(" ⓘ", title="The Unique Carrier Entity is shown in parentheses only if an airline operates under multiple different carrier entities (e.g., subsidiaries or branches). Otherwise, it is not displayed.", style={'lineHeight': '1', 'verticalAlign': 'middle', 'display': 'inline-block'}),
                                     
                                 dcc.Dropdown(
                                     id='airline-selector',
@@ -295,7 +293,7 @@ app.layout = html.Div(
                                             'borderRadius': '5px',
                                             'cursor': 'pointer'
                                         }),
-                                    html.Span("ℹ️", title="The Combined Score combines several metrics (Trend strength, Seasonality amplitude, MAE Holt error, MAE SARIMA error, Number of passengers, Load factor). Positive weights increase the score, negative weights decrease it."),
+                                    html.Span(" ⓘ", title="The Combined Score combines several metrics (Trend strength, Seasonality amplitude, MAE Holt error, MAE SARIMA error, Number of passengers, Load factor). Positive weights increase the score, negative weights decrease it."),
                                   
                                 ], style={'display': 'flex', 'gap': '10px', 'marginBottom': '20px'}),
                                 
@@ -367,8 +365,6 @@ app.layout = html.Div(
                     'fontSize': 'clamp(12px, 1.4vw, 20px)',
                     }),
 
-                #html.H2("Route Map", style={'textAlign': 'center'}),
-                #html.Label("Select origin airport:"),
                 dcc.Dropdown(
                     id="origin-dropdown",
                     options = [{"label": f"{iata_to_name.get(iata, iata)} ({iata})", "value": iata} for iata in sorted(iata_codes)],
@@ -401,9 +397,9 @@ app.layout = html.Div(
                 html.Label("Select month:"),
                 dcc.Dropdown(
                     id='top-routes-month-selector',
-                    options=[{"label": "All month", "value": "all"}]+
+                    options=[{"label": "Entire year", "value": "all"}]+
                         [{"label": str(m), "value": m} for m in range(1, 13)],
-                    value=1,
+                    value="all",
                     style={'width': '100%', 'backgroundColor': 'white', 'color': 'black','borderRadius': '8px',
                                         'boxShadow': '0 2px 6px rgba(0,0,0,0.2)',
                                         'padding': '5px'},
@@ -535,13 +531,10 @@ def update_airline_options(selected_route):
     # Filter dataset for the selected route
     filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
 
-    
-
-    # Funktion zum Erzeugen des Labels
+    # Create combined label: Airline Name + Aircraft Type
     def make_label(row):
         airline = row["UNIQUE_CARRIER_NAME"]
         aircraft = str(row["AIRCRAFT_TYPE"])
-        #carrier_name = str(row["UNIQUE_CARRIER_ENTITY"])
         entity = str(row["UNIQUE_CARRIER_ENTITY"])
         if global_entity_counts.get(airline,1) > 1:
             return f"{airline} ({aircraft}) [{entity}]"
@@ -550,13 +543,6 @@ def update_airline_options(selected_route):
     
     #Create label column
     filtered["label"] = filtered.apply(make_label, axis=1)
-
-
-
-    # Create combined label: Airline Name + Aircraft Type
-    #filtered["label"] = (
-    #    filtered["UNIQUE_CARRIER_NAME"] + " (" + filtered["AIRCRAFT_TYPE"].astype(str) + ")"+ " [" + filtered["CARRIER_NAME"].astype(str) + "]"
-    #)
    
     filtered["value"] = (
         filtered["UNIQUE_CARRIER_NAME"] + "_" + filtered["AIRCRAFT_TYPE"].astype(str)
@@ -566,7 +552,6 @@ def update_airline_options(selected_route):
     unique_labels = filtered[["label", "value"]].drop_duplicates()
 
     # Create dropdown options with label (airline + aircraft) and value (airline only)
-    #options = [{"label": row["label"], "value": row["UNIQUE_CARRIER_NAME"]} for _, row in unique_labels.iterrows()]
     options = [{"label": row["label"], "value": row["value"]} for _, row in unique_labels.iterrows()]
 
     # Add "All Airlines" option
@@ -670,7 +655,7 @@ def update_all_graphs(selected_route, selected_airline,  selected_year):
     # Return early if no route selected
     if not selected_route:
         return trend_fig, seasonality_fig, outliers_fig, lf_fig, pax_fig
-    #airline_name, aircraft_type = selected_airline.strip().rsplit(" (", 1)
+    
 
     if selected_airline == "all":
         airline_name = None
@@ -680,7 +665,7 @@ def update_all_graphs(selected_route, selected_airline,  selected_year):
             raise ValueError(f"Invalid airline format: {selected_airline}")
         airline_name, aircraft_type = selected_airline.split("_", 1)
     
-    #aircraft_type = aircraft_type.rstrip(")")
+    
     origin, dest = selected_route.split('-')
 
     route_key = f"{origin} → {dest}"
