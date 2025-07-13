@@ -111,6 +111,8 @@ app.layout = html.Div(
                         html.Div(style={'display': 'flex'}, children=[
                             html.Div([
                                 html.Label("Select airline:"),
+                                html.Span(" ⓘ", title="The Unique Carrier Entity is shown in parentheses only if an airline operates under multiple different carrier entities (e.g., subsidiaries or branches). Otherwise, it is not displayed.."),
+                                    
                                 dcc.Dropdown(
                                     id='airline-selector',
                                     options=[{"label": "All Airlines", "value": "all"}],
@@ -513,7 +515,9 @@ def update_map(selected_origin):
     return fig
 
     
-    
+# Global: Count number of entities per airline in the full dataset
+global_entity_counts = data.groupby("UNIQUE_CARRIER_NAME")["UNIQUE_CARRIER_ENTITY"].nunique()
+   
 
 # Callback: Update airline dropdown based on selected route
 @app.callback(
@@ -531,10 +535,28 @@ def update_airline_options(selected_route):
     # Filter dataset for the selected route
     filtered = data[(data["ORIGIN"] == origin) & (data["DEST"] == dest)]
 
+    
+
+    # Funktion zum Erzeugen des Labels
+    def make_label(row):
+        airline = row["UNIQUE_CARRIER_NAME"]
+        aircraft = str(row["AIRCRAFT_TYPE"])
+        #carrier_name = str(row["UNIQUE_CARRIER_ENTITY"])
+        entity = str(row["UNIQUE_CARRIER_ENTITY"])
+        if global_entity_counts.get(airline,1) > 1:
+            return f"{airline} ({aircraft}) [{entity}]"
+        else:
+            return f"{airline} ({aircraft})"
+    
+    #Create label column
+    filtered["label"] = filtered.apply(make_label, axis=1)
+
+
+
     # Create combined label: Airline Name + Aircraft Type
-    filtered["label"] = (
-        filtered["UNIQUE_CARRIER_NAME"] + " (" + filtered["AIRCRAFT_TYPE"].astype(str) + ")"
-    )
+    #filtered["label"] = (
+    #    filtered["UNIQUE_CARRIER_NAME"] + " (" + filtered["AIRCRAFT_TYPE"].astype(str) + ")"+ " [" + filtered["CARRIER_NAME"].astype(str) + "]"
+    #)
    
     filtered["value"] = (
         filtered["UNIQUE_CARRIER_NAME"] + "_" + filtered["AIRCRAFT_TYPE"].astype(str)
