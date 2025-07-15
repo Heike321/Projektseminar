@@ -19,7 +19,7 @@ columns_to_keep = [
     "AIRCRAFT_CONFIG", "YEAR", "QUARTER", "MONTH", "DISTANCE_GROUP", "CLASS"
 ]
 # 
-airports_df = pd.read_csv("airports.dat", header=None, names=[
+airports_df = pd.read_csv("Data/airports.dat", header=None, names=[
         "Airport_ID", "Name", "City", "Country", "IATA", "ICAO",
         "Latitude", "Longitude", "Altitude", "Timezone", "DST",
         "Tz_database_time_zone", "Type", "Source"
@@ -38,7 +38,7 @@ def preprocess():
     ]
 
     #Load Excel file with valid connections
-    df_connections = pd.read_excel("Data/Connections.xlsx")
+    df_connections = pd.read_excel("Generated/Connections.xlsx")
     
     # Convert the valid connections into a set of keys for easier lookup
     passed = [tuple(row) for row in df_connections.values]
@@ -97,7 +97,7 @@ def preprocess():
     final_grouped["DEST_LAT"] = final_grouped["DEST"].map(lambda x: iata_to_coords.get(x, {}).get("Latitude"))
     final_grouped["DEST_LON"] = final_grouped["DEST"].map(lambda x: iata_to_coords.get(x, {}).get("Longitude"))
     # Save the final grouped data into a single CSV file
-    final_grouped.to_csv("Data/Grouped_All_Valid_Connections.csv", index=False)
+    final_grouped.to_csv("Generated/Grouped_All_Valid_Connections.csv", index=False)
 
     # Print the summary of processed rows
     print(f"Total filtered and grouped rows saved: {len(final_grouped)}")
@@ -119,7 +119,7 @@ def preprocess():
         route_dropdown.append({"label": label, "value": f"{origin}-{dest}"})
 
     # Save it
-    with open("Data/valid_routes.json", "w") as f:
+    with open("Generated/valid_routes.json", "w") as f:
         json.dump(route_dropdown, f)
 
  

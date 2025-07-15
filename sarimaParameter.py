@@ -1,9 +1,18 @@
+# Data handling
 import pandas as pd
 import json
 import itertools
 import time
 import re
+
+# Time series models
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+# Warning control
+import warnings
+warnings.filterwarnings("ignore")
+
+
 def make_safe_filename(s):
     s = s.replace("→", "to")
     s = s.replace("|", "_")
@@ -41,7 +50,7 @@ def get_best_sarima(ts, p, d, q, P, D, Q, s):
     return None
 
 
-def create_sarima_param_file(df, routes, output_file="custom_sarima_params.json"):
+def create_sarima_param_file(df, routes, output_file="Generated/custom_sarima_params.json"):
 
     #Generates and saves optimal SARIMA parameters for each route–airline combination, and also for route-level aggregation (across airlines).
     config = {}
@@ -119,7 +128,7 @@ def create_sarima_param_file(df, routes, output_file="custom_sarima_params.json"
 
 if __name__ == "__main__":
     # Load preprocessed airline data
-    df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", low_memory=False)
+    df = pd.read_csv("Generated/Grouped_All_Valid_Connections.csv", low_memory=False)
 
     # Create ROUTE and DATE columns
     df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")

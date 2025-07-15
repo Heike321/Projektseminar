@@ -38,20 +38,20 @@ warnings.filterwarnings("ignore", category=FutureWarning)
 
 
 # Load and preprocess data
-data = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
+data = pd.read_csv("Generated/Grouped_All_Valid_Connections.csv", dtype={14: str})
 data["DATE"] = pd.to_datetime(data["YEAR"].astype(str) + "-" + data["MONTH"].astype(str) + "-01")
 
-with open("Data/valid_routes.json") as f:
+with open("Generated/valid_routes.json") as f:
     route_options = json.load(f)
 
 # Load precomputed route insights and select the top 10 routes with the highest increasing trend
-route_insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
+route_insights_df = pd.read_csv("Generated/precomputed_route_insights.csv")
 top_routes_df = route_insights_df.sort_values("trend_slope", ascending=False).head(10)
 
 # Load aircraft type lookup table to map numeric aircraft codes to human-readable names
 aircraft_df = pd.read_csv("./Data/T_AIRCRAFT_TYPES.csv")
 
-# Lookup-Dictionary: { "614": "BOEING 737-800" }
+# Lookup-Dictionary: 
 aircraft_type_lookup = dict(zip(
     aircraft_df["AC_TYPEID"].astype(str),
     aircraft_df["SSD_NAME"]
@@ -249,7 +249,7 @@ app.layout = html.Div(
                                         ),
                                         html.Div(id="focus-description", style={"marginTop": "10px", "fontStyle": "italic", "color": "#555"})
                                     ],
-                                    style={'display': 'none', 'marginBottom': '20px'}  # initial versteckt
+                                    style={'display': 'none', 'marginBottom': '20px'}  # initially hidden
                                 ),
                                 html.Div([
                                     html.Button("Highest Increasing Trend", 
@@ -542,7 +542,7 @@ def update_airline_options(selected_route):
     def make_label(row):
         airline = row["UNIQUE_CARRIER_NAME"]
         aircraft_code = str(row["AIRCRAFT_TYPE"])
-        aircraft_name = aircraft_type_lookup.get(aircraft_code, aircraft_code)  # Fallback: Code
+        aircraft_name = aircraft_type_lookup.get(aircraft_code, aircraft_code)  
         
         entity = str(row["UNIQUE_CARRIER_ENTITY"])
         

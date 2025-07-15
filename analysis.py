@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 from forecasting import sarima_forecast, forecast_passengers
 
 # Load data
-airports_df = pd.read_csv("airports.dat")
+airports_df = pd.read_csv("Data/airports.dat")
 
 def make_safe_filename(s):
     s = s.replace("→", "to")
@@ -213,7 +213,7 @@ def generate_route_insights(df):
 
             route_key = f"{route} | {airline} | {aircraft}"
             safe_route_key = make_safe_filename(route_key)
-            file_path = f"saved_forecasts/{safe_route_key}_2024.pkl"
+            file_path = f"Generated/saved_forecasts/{safe_route_key}_2024.pkl"
             
             # Filter the data for this airline-aircraft pair
             subset = route_df[
@@ -271,7 +271,7 @@ def generate_route_insights(df):
 
     df_result = pd.DataFrame(insights)
     df_result = df_result.sort_values("mae_sarima", ascending=True).reset_index(drop=True)
-    df_result.to_csv("Data/precomputed_route_insights.csv", index=False)
+    df_result.to_csv("Generated/precomputed_route_insights.csv", index=False)
 
     return df_result
 
@@ -279,10 +279,10 @@ def generate_route_insights(df):
 def generate_combined_route_score(top_n=10, focus="growth"):
     
     # Load precomputed insights
-    insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
+    insights_df = pd.read_csv("Generated/precomputed_route_insights.csv")
 
     # Load raw route data to compute volume and load factor
-    route_df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv", dtype={14: str})
+    route_df = pd.read_csv("Generated/Grouped_All_Valid_Connections.csv", dtype={14: str})
     route_df = route_df[(route_df["SEATS"] > 0) & (route_df["PASSENGERS"] > 0)].copy()
     route_df["ROUTE"] = route_df["ORIGIN"] + " → " + route_df["DEST"]
     route_df["LOAD_FACTOR"] = route_df["PASSENGERS"] / route_df["SEATS"]
@@ -343,55 +343,62 @@ def generate_combined_route_score(top_n=10, focus="growth"):
 
 if __name__ == "__main__":
     
-    df = pd.read_csv("Data/Grouped_All_Valid_Connections.csv",low_memory=False)#, dtype={14: str})
+    df = pd.read_csv("Generated/Grouped_All_Valid_Connections.csv",low_memory=False)#, dtype={14: str})
     df["DATE"] = pd.to_datetime(df["YEAR"].astype(str) + "-" + df["MONTH"].astype(str) + "-01")
     df["ROUTE"] = df["ORIGIN"] + " → " + df["DEST"]
     
-    
-    '''
     # One-time forecast save run for 2024
-    from forecasting import sarima_forecast
-
-    all_routes = df["ROUTE"].unique()
-
-    for route in all_routes:
-        route_df = df[df["ROUTE"] == route]
-        
-        # Airline & Aircraft combinations
-        combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
-
-        for _, row in combinations.iterrows():
-            airline = row["UNIQUE_CARRIER_NAME"]
-            aircraft = row["AIRCRAFT_TYPE"]
-
-            sub_df = route_df[
-                (route_df["UNIQUE_CARRIER_NAME"] == airline) &
-                (route_df["AIRCRAFT_TYPE"] == aircraft)
-            ].copy()
-
-            # Skip if the subset is empty or has no 2024 data
-            if sub_df.empty or sub_df[sub_df["DATE"].dt.year == 2024].empty:
-                continue
-
-            # Skip if there is insufficient data or missing passengers
-            if len(sub_df) < 24 or sub_df["PASSENGERS"].isnull().any():
-                print(f"Not enough data for {route} | {airline} | {aircraft}")
-                continue
-
-            print(f"Saving forecast: {route} | {airline} | {aircraft}")
-            try:
-                sarima_forecast(
-                    df=sub_df,
-                    forecast_year=2024,
-                    route=route,
-                    airline=airline,
-                    aircraft_type=aircraft, 
-                    save=True  
-                )
-            except Exception as e:
-                print(f"Error with {route} | {airline} | {aircraft}: {e}")
+    # Only enable when forecasts need to be generated again!
+    # Set RUN_FORECAST_INIT = False during normal dashboard operation.
     
-    '''
+
+    RUN_FORECAST_INIT = False  # Set to True only for initial forecast generation
+
+    if RUN_FORECAST_INIT:
+        from forecasting import sarima_forecast
+
+        all_routes = df["ROUTE"].unique()
+
+        for route in all_routes:
+            route_df = df[df["ROUTE"] == route]
+            
+            # Get all airline & aircraft combinations for this route
+            combinations = route_df[["UNIQUE_CARRIER_NAME", "AIRCRAFT_TYPE"]].drop_duplicates()
+
+            for _, row in combinations.iterrows():
+                airline = row["UNIQUE_CARRIER_NAME"]
+                aircraft = row["AIRCRAFT_TYPE"]
+
+                sub_df = route_df[
+                    (route_df["UNIQUE_CARRIER_NAME"] == airline) &
+                    (route_df["AIRCRAFT_TYPE"] == aircraft)
+                ].copy()
+
+                # Skip if no data or no 2024 entries
+                if sub_df.empty or sub_df[sub_df["DATE"].dt.year == 2024].empty:
+                    continue
+
+                # Skip if insufficient history or missing values
+                if len(sub_df) < 24 or sub_df["PASSENGERS"].isnull().any():
+                    print(f"Not enough data for {route} | {airline} | {aircraft}")
+                    continue
+
+                print(f"Saving forecast: {route} | {airline} | {aircraft}")
+                try:
+                    sarima_forecast(
+                        df=sub_df,
+                        forecast_year=2024,
+                        route=route,
+                        airline=airline,
+                        aircraft_type=aircraft, 
+                        save=True  # Save forecast outputs
+                    )
+                except Exception as e:
+                    print(f"Error with {route} | {airline} | {aircraft}: {e}")
+    else:
+        print("One-time forecast run skipped (RUN_FORECAST_INIT=False)")
+
+
+    # Always run route insights – independent of forecast generation
     generate_route_insights(df)
-    
-    
+        

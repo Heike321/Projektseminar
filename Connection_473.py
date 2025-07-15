@@ -124,18 +124,16 @@ def read(csv1, csv2, csv3):
 
         if (result == True):
             passed.append(con)
-
-
-#    for con in passed:
-#        print_connection(con,df1)
-#        print_connection(con,df2)
-#        print_connection(con,df3)
-
-    print(len(passed), "connections passed for all data frames.")
+    
+    output_folder = "Generated"
+    os.makedirs(output_folder, exist_ok=True)
 
     # Save Excel file with the valid connections
     df_output = pd.DataFrame(passed, columns=["AIRLINE_ID", "UNIQUE_CARRIER_ENTITY", "ORIGIN", "DEST", "AIRCRAFT_TYPE"])
-    df_output.to_excel("Data/Connections.xlsx", index=False)
+    output_path = os.path.join(output_folder, "Connections.xlsx")
+    df_output.to_excel(output_path, index=False)
+
+    #print(len(passed), "connections passed for all data frames.")
     #print("Excel File 'Connections.xlsx' was created successfully.")
 
 
