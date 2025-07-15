@@ -48,7 +48,14 @@ with open("Data/valid_routes.json") as f:
 route_insights_df = pd.read_csv("Data/precomputed_route_insights.csv")
 top_routes_df = route_insights_df.sort_values("trend_slope", ascending=False).head(10)
 
+# Load aircraft type lookup table to map numeric aircraft codes to human-readable names
+aircraft_df = pd.read_csv("./Data/T_AIRCRAFT_TYPES.csv")
 
+# Lookup-Dictionary: { "614": "BOEING 737-800" }
+aircraft_type_lookup = dict(zip(
+    aircraft_df["AC_TYPEID"].astype(str),
+    aircraft_df["SSD_NAME"]
+))
 # Get all unique origin IATA codes used in the dataset
 iata_codes = data["ORIGIN"].dropna().unique()
 
@@ -534,12 +541,16 @@ def update_airline_options(selected_route):
     # Create combined label: Airline Name + Aircraft Type
     def make_label(row):
         airline = row["UNIQUE_CARRIER_NAME"]
-        aircraft = str(row["AIRCRAFT_TYPE"])
+        aircraft_code = str(row["AIRCRAFT_TYPE"])
+        aircraft_name = aircraft_type_lookup.get(aircraft_code, aircraft_code)  # Fallback: Code
+        
         entity = str(row["UNIQUE_CARRIER_ENTITY"])
-        if global_entity_counts.get(airline,1) > 1:
-            return f"{airline} ({aircraft}) [{entity}]"
+        
+        if global_entity_counts.get(airline, 1) > 1:
+            return f"{airline} ({aircraft_name}) [{entity}]"
         else:
-            return f"{airline} ({aircraft})"
+            return f"{airline} ({aircraft_name})"
+    
     
     #Create label column
     filtered["label"] = filtered.apply(make_label, axis=1)

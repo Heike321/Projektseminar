@@ -196,7 +196,6 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
         try:
             with open("custom_sarima_params.json") as f:
                 param_config = json.load(f)
-            #key = f"{route} | {airline}" if airline else route
             key = f"{route} | {airline}| {aircraft_type}" if airline else route 
             safe_key = make_safe_filename(key)
             if safe_key in param_config:
