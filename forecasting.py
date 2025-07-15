@@ -251,3 +251,7 @@ def sarima_forecast(df, forecast_year, route=None, airline=None,aircraft_type=No
     
     return forecast_df.reset_index(drop=True), f"Fallback used: {fallback_triggered}"
     
+
+
+#if __name__ == "__main__":
+
