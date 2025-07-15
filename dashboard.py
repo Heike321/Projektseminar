@@ -1073,7 +1073,7 @@ def update_focus_description(focus):
     descriptions = {
         "growth": "Prioritizes routes with increasing trends and high passenger volume.",
         "efficiency": "Focuses on routes with high load factor and low forecast error.",
-        "robustness": "Emphasizes stable routes with low seasonality."
+        "robustness": "Emphasizes stable routes with stable demand and predictable seasonal variations."
     }
     return descriptions.get(focus, "")
 
